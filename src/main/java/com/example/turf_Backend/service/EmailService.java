@@ -27,4 +27,24 @@ public class EmailService {
             log.error("Failed to send email to '{}': {}", to, e.getMessage());
         }
     }
+
+    @Async("taskExecutor")
+    public void sendOwnerDecisionMail(String to, String name, boolean approved, String reason) {
+        try {
+
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setTo(to);
+            if (approved) {
+                message.setSubject("Account Approved");
+                message.setText("Hello " + name + ",\n\nYour account has been approved. You can now access your dashboard.\n\nThank you.");
+            } else {
+                message.setSubject("Account Rejected");
+                message.setText("Hello " + name + ",\n\nYour account has been rejected.\nReason: " + reason + "\n\nPlease contact support if needed.");
+            }
+            mailSender.send(message);
+            log.info("Decision email sent to {} (Approved: {})", to, approved);
+        } catch (Exception e) {
+            log.error("Failed to send decision email to {}: {}", to, e.getMessage());
+        }
+    }
 }

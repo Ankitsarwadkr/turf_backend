@@ -12,7 +12,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -27,60 +26,60 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JWTUtil jwtUtil;
     private final CustomUserDetailsService customUserDetailsService;
+
     @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+            throws ServletException, IOException {
 
-String token=null;
-String email =null;
+        String token = null;
+        String email = null;
 
-if(request.getCookies()!=null)
-{
-    for (Cookie cookie: request.getCookies())
-    {
-        if(cookie.getName().equals("token"))
-        {
-            token=cookie.getValue();
+        // Try to read JWT from cookie
+        if (request.getCookies() != null) {
+            for (Cookie cookie : request.getCookies()) {
+                if ("token".equals(cookie.getName())) {
+                    token = cookie.getValue();
+                    break;
+                }
+            }
         }
-    }
-}
 
-            log.info("Incomming Request :{}",request.getRequestURI());
-            final String authHeader =request.getHeader("Authorization");
-            if (authHeader!=null && authHeader.startsWith("Bearer ")) // Checks the incoming request has Authorization Header
-            {
-                 token=authHeader.substring(7);
-                try
-                {
-                     email= jwtUtil.getEmailFromToken(token);
-                }
-                catch (Exception e)
-                {
-                    log.error("Jwt parsing error : {}",e.getMessage());
-                }
-            }
-            if (email!=null && SecurityContextHolder.getContext().getAuthentication()==null)
-            {
-                UserDetails userDetails=customUserDetailsService.loadUserByUsername(email);
-                if (jwtUtil.isTokenValid(token,(User) userDetails))
-                {
-                    UsernamePasswordAuthenticationToken authoken=new UsernamePasswordAuthenticationToken(userDetails,null,userDetails.getAuthorities());
-                    authoken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                    SecurityContextHolder.getContext().setAuthentication(authoken);
 
-                    log.info("{[]} User '{}' accessed '{} {}' at {} ",userDetails.getAuthorities()
-                    ,userDetails.getUsername()
-                    ,request.getMethod()
-                    ,request.getRequestURI()
-                    , LocalDateTime.now());
-                }
-                else {
-                    log.warn("Invalid Jwt for User :{}",email);
-                }
+        log.info("Incoming request: {}", request.getRequestURI());
+
+        //  Extract email from token if found
+        if (token != null) {
+            try {
+                email = jwtUtil.getEmailFromToken(token);
+            } catch (Exception e) {
+                log.error("JWT parsing error: {}", e.getMessage());
             }
-            else if (email==null)
-            {
-                log.debug("No Jwt token found for request: {}",request.getRequestURI());
+        }
+
+        //  Authenticate user if valid
+        if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            UserDetails userDetails = customUserDetailsService.loadUserByUsername(email);
+
+            if (jwtUtil.isTokenValid(token, (User) userDetails)) {
+                UsernamePasswordAuthenticationToken authToken =
+                        new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                SecurityContextHolder.getContext().setAuthentication(authToken);
+
+                log.info("[{}] User '{}' accessed '{} {}' at {}",
+                        userDetails.getAuthorities(),
+                        userDetails.getUsername(),
+                        request.getMethod(),
+                        request.getRequestURI(),
+                        LocalDateTime.now());
+            } else {
+                log.warn("Invalid JWT for user: {}", email);
             }
-            filterChain.doFilter(request,response);
+        } else if (email == null) {
+            log.debug("No valid JWT found for request: {}", request.getRequestURI());
+        }
+
+        //Continue filter chain
+        filterChain.doFilter(request, response);
     }
 }

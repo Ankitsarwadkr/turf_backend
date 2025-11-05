@@ -6,7 +6,6 @@ import com.example.turf_Backend.dto.request.RegistercustomerRequest;
 import com.example.turf_Backend.dto.response.AuthResponse;
 import com.example.turf_Backend.service.AuthService;
 import jakarta.servlet.http.Cookie;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
