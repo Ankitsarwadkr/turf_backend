@@ -89,7 +89,7 @@ Status	Message
 500	Internal server error
 Token Handling
 
-JNote:
+Note:
 The JWT token is not returned in the JSON body.
 It is stored securely as an HttpOnly cookie in the browser.
 All subsequent requests to protected routes automatically include this cookie.
