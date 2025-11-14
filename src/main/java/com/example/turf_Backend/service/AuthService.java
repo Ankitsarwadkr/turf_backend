@@ -43,7 +43,7 @@ public class AuthService {
     private final EmailService emailService;
     private final AuthenticationManager authenticationManager;
 
-    @Value("${file.upload-dir}")
+    @Value("${file.upload-dir.owners}")
     private String fileUploadDir;
  private static final List<String> ALLOWED_FILE_TYPES=List.of("application/pdf","image/png","image/jpeg");
  private static final long MAX_FILE_SIZE=5*1024*1024;
