@@ -3,8 +3,8 @@ package com.example.turf_Backend.mapper;
 import com.example.turf_Backend.dto.request.RegisterOwnerRequest;
 import com.example.turf_Backend.dto.request.RegistercustomerRequest;
 import com.example.turf_Backend.dto.response.AuthResponse;
-import com.example.turf_Backend.entity.Role;
-import com.example.turf_Backend.entity.Status;
+import com.example.turf_Backend.enums.Role;
+import com.example.turf_Backend.enums.Status;
 import com.example.turf_Backend.entity.User;
 import org.springframework.stereotype.Component;
 

@@ -5,7 +5,7 @@ import com.example.turf_Backend.dto.request.RegisterOwnerRequest;
 import com.example.turf_Backend.dto.request.RegistercustomerRequest;
 import com.example.turf_Backend.dto.response.AuthResponse;
 import com.example.turf_Backend.entity.OwnerDocument;
-import com.example.turf_Backend.entity.Role;
+import com.example.turf_Backend.enums.Role;
 import com.example.turf_Backend.entity.User;
 import com.example.turf_Backend.exception.CustomException;
 import com.example.turf_Backend.mapper.AuthMapper;

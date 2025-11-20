@@ -57,26 +57,45 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         }
 
         //  Authenticate user if valid
-        if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            UserDetails userDetails = customUserDetailsService.loadUserByUsername(email);
+        if (email !=null && SecurityContextHolder.getContext().getAuthentication()==null)
+        {
+            try
+            {
+                //load authorities
+                UserDetails userDetails=customUserDetailsService.loadUserByUsername(email);
 
-            if (jwtUtil.isTokenValid(token, (User) userDetails)) {
-                UsernamePasswordAuthenticationToken authToken =
-                        new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authToken);
+                //Ensure we have the application User entity as principle
+                User userPrinciple;
+                if (userDetails instanceof User)
+                {
+                    //your CustomUserDetails Service already returned the entity
+                    userPrinciple=(User) userDetails;
+                }
+                else
+                {
+                    //fallback load application User from Db (add method in CustomUserDetailsService)
+                    userPrinciple=customUserDetailsService.loadUserEntityByEmail(email);
+                }
+                if (jwtUtil.isTokenValid(token,userPrinciple))
+                {
+                 UsernamePasswordAuthenticationToken authToken=new UsernamePasswordAuthenticationToken(userPrinciple,null,userDetails.getAuthorities());
+                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
-                log.info("[{}] User '{}' accessed '{} {}' at {}",
-                        userDetails.getAuthorities(),
-                        userDetails.getUsername(),
-                        request.getMethod(),
-                        request.getRequestURI(),
-                        LocalDateTime.now());
-            } else {
-                log.warn("Invalid JWT for user: {}", email);
+                 SecurityContextHolder.getContext().setAuthentication(authToken);
+
+                 log.info("[{}] User '{}' accessed '{} {}' at {}",userDetails.getAuthorities(),userDetails.getUsername(),request.getMethod(),request.getRequestURI(),LocalDateTime.now());
+                }
+                else
+                {
+                    log.warn("invalid Jwt for user : {}",email);
+                }
             }
-        } else if (email == null) {
-            log.debug("No valid JWT found for request: {}", request.getRequestURI());
+            catch (Exception ex)
+            {
+                log.error("Authentication setup failed for token user '{}' : {}",email,ex.getMessage());
+            }
+        } else if (email==null) {
+            log.debug("No JWT Present for request : {}",request.getRequestURI());
         }
 
         //Continue filter chain

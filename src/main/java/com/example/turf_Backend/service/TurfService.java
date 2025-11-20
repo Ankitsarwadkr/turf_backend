@@ -42,7 +42,7 @@ public class TurfService {
         Turf turf = Turf.builder()
                 .name(request.getName())
                 .address(request.getAddress())
-                .location(request.getLocation())
+                .mapUrl(request.getMapUrl())
                 .city(request.getCity())
                 .description(request.getDescription())
                 .amenities(request.getAmenities())

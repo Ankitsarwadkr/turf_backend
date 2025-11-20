@@ -1,6 +1,6 @@
 package com.example.turf_Backend.config;
 
-import com.example.turf_Backend.entity.Role;
+import com.example.turf_Backend.enums.Role;
 import com.example.turf_Backend.entity.User;
 import com.example.turf_Backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;

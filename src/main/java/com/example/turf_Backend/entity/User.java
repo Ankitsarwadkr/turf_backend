@@ -1,5 +1,7 @@
 package com.example.turf_Backend.entity;
 
+import com.example.turf_Backend.enums.Role;
+import com.example.turf_Backend.enums.Status;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;

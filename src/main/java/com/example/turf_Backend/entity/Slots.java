@@ -1,5 +1,6 @@
 package com.example.turf_Backend.entity;
 
+import com.example.turf_Backend.enums.SlotStatus;
 import jakarta.persistence.*;
 import lombok.*;
 

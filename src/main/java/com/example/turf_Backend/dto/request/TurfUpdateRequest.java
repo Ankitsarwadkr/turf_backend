@@ -9,7 +9,7 @@ import java.util.List;
 public class TurfUpdateRequest {
     private String name;
     private String address;
-    private String location;
+    private String mapUrl;
     private String city;
     private String description;
     private String amenities;

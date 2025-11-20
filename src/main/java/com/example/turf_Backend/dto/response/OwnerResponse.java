@@ -1,7 +1,7 @@
 package com.example.turf_Backend.dto.response;
 
 
-import com.example.turf_Backend.entity.Status;
+import com.example.turf_Backend.enums.Status;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

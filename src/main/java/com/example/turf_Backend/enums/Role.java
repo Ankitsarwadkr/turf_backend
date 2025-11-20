@@ -1,4 +1,4 @@
-package com.example.turf_Backend.entity;
+package com.example.turf_Backend.enums;
 
 public enum Role {
     CUSTOMER,

@@ -3,6 +3,7 @@ package com.example.turf_Backend.service;
 import com.example.turf_Backend.dto.request.SlotStatusUpdateRequest;
 import com.example.turf_Backend.dto.response.SlotResponse;
 import com.example.turf_Backend.entity.*;
+import com.example.turf_Backend.enums.SlotStatus;
 import com.example.turf_Backend.exception.CustomException;
 import com.example.turf_Backend.repository.SlotsRepository;
 import com.example.turf_Backend.repository.TurfRepository;

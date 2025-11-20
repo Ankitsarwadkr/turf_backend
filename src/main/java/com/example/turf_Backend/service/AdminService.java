@@ -2,8 +2,8 @@ package com.example.turf_Backend.service;
 
 import com.example.turf_Backend.dto.request.AdminRejectRequest;
 import com.example.turf_Backend.dto.response.OwnerResponse;
-import com.example.turf_Backend.entity.Role;
-import com.example.turf_Backend.entity.Status;
+import com.example.turf_Backend.enums.Role;
+import com.example.turf_Backend.enums.Status;
 import com.example.turf_Backend.entity.User;
 import com.example.turf_Backend.exception.CustomException;
 import com.example.turf_Backend.mapper.AdminMapper;

@@ -26,7 +26,7 @@ public class Turf {
     @Column(nullable = false)
     private String address;
     @Column(nullable = false)
-    private String location;//view in map (location)
+    private String mapUrl;//view in map (location)
     @Column(nullable = false)
     private  String city;
 

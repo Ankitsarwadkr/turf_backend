@@ -1,5 +1,6 @@
 package com.example.turf_Backend.service;
 
+import com.example.turf_Backend.entity.User;
 import com.example.turf_Backend.exception.CustomException;
 import com.example.turf_Backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -16,5 +17,10 @@ public class CustomUserDetailsService implements UserDetailsService {
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
         return userRepository.findByEmail(email).orElseThrow(()->new CustomException("User with email "+email+" not found"));
+    }
+
+    public User loadUserEntityByEmail(String email) {
+        return userRepository.findByEmail(email)
+                .orElseThrow(()->new UsernameNotFoundException("User not found "+email));
     }
 }

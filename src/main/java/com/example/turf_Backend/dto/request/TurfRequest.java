@@ -16,7 +16,7 @@ public class TurfRequest {
     private String address;
 
     @NotBlank
-    private String location;
+    private String mapUrl;
 
     @NotBlank
     private String city;

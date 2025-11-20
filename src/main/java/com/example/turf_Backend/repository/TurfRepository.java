@@ -9,4 +9,6 @@ import java.util.List;
 @Repository
 public interface TurfRepository extends JpaRepository<Turf, Long> {
     List<Turf> findByOwnerId(Long id);
+
+    List<Turf> findByAvailableTrue();
 }

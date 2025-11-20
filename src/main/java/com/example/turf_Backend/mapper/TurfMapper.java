@@ -17,7 +17,7 @@ public class TurfMapper {
                 .id(turf.getId())
                 .name(turf.getName())
                 .address(turf.getAddress())
-                .location(turf.getLocation())
+                .mapUrl(turf.getMapUrl())
                 .city(turf.getCity())
                 .description(turf.getDescription())
                 .amenities(turf.getAmenities())
@@ -34,7 +34,7 @@ public class TurfMapper {
         if(request.getName()!=null)turf.setName(request.getName());
         if (request.getAddress() != null) turf.setAddress(request.getAddress());
         if (request.getCity() != null) turf.setCity(request.getCity());
-        if (request.getLocation() != null) turf.setLocation(request.getLocation());
+        if (request.getMapUrl() != null) turf.setMapUrl(request.getMapUrl());
         if (request.getDescription() != null) turf.setDescription(request.getDescription());
         if (request.getAmenities() != null) turf.setAmenities(request.getAmenities());
         if (request.getTurfType() != null) turf.setTurfType(request.getTurfType());
@@ -46,7 +46,7 @@ public class TurfMapper {
                 .id(turf.getId())
                 .name(turf.getName())
                 .address(turf.getAddress())
-                .location(turf.getLocation())
+                .mapUrl(turf.getMapUrl())
                 .city(turf.getCity())
                 .description(turf.getDescription())
                 .amenities(turf.getAmenities())
