@@ -22,4 +22,10 @@ public interface SlotsRepository extends JpaRepository<Slots, Long> {
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query("SELECT s FROM Slots s WHERE s.id IN :ids")
   List<Slots> lockByIdsForUpdate(@Param("ids") List<Long> ids);
+
+  @Query("SELECT s FROM Slots s WHERE s.id IN :ids")
+  List<Slots> findAllByIds(List<Long> ids);
+
+ @Query("SELECT COUNT (s)>0 FROM Slots s WHERE s.turf.id=:turfId AND s.status= 'BOOKED' AND s.date>=CURRENT_DATE")
+  boolean existsFutureBooking(@Param("turfId") Long turfId);
 }

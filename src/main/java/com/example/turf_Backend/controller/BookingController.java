@@ -2,14 +2,15 @@ package com.example.turf_Backend.controller;
 
 import com.example.turf_Backend.dto.request.BookingRequest;
 import com.example.turf_Backend.dto.response.BookingResponse;
+import com.example.turf_Backend.dto.response.CustomerBookingDetails;
+import com.example.turf_Backend.dto.response.CustomerBookingListItem;
 import com.example.turf_Backend.service.BookingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/customer/bookings")
@@ -23,6 +24,17 @@ public class BookingController {
     public ResponseEntity<BookingResponse> createBooking(@RequestBody BookingRequest request)
     {
         return ResponseEntity.ok(bookingService.createBooking(request));
+    }
+
+    @GetMapping("/my")
+    public ResponseEntity<List<CustomerBookingListItem>> getMyBookings()
+    {
+        return ResponseEntity.ok(bookingService.getMyBookings());
+    }
+    @GetMapping("/{bookingId}")
+    public ResponseEntity<CustomerBookingDetails> getBookingDetails(@PathVariable String bookingId)
+    {
+        return ResponseEntity.ok(bookingService.getBookingDetails(bookingId));
     }
 
 }
