@@ -29,6 +29,4 @@ public class CustomerBookingListItem {
         private LocalTime startTime;
         private LocalTime endTime;
     }
-
-
 }

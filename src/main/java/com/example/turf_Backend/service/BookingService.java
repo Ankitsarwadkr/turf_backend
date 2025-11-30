@@ -4,6 +4,7 @@ import com.example.turf_Backend.dto.DtosProjection.CustomerBookingDetailsProject
 import com.example.turf_Backend.dto.DtosProjection.CustomerBookingListProjection;
 import com.example.turf_Backend.dto.request.BookingRequest;
 import com.example.turf_Backend.dto.response.BookingResponse;
+import com.example.turf_Backend.dto.response.BookingStatusResponse;
 import com.example.turf_Backend.dto.response.CustomerBookingDetails;
 import com.example.turf_Backend.dto.response.CustomerBookingListItem;
 import com.example.turf_Backend.entity.*;
@@ -24,6 +25,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -89,7 +91,7 @@ public class BookingService {
                     .amount(total)
                     .status(BookingStatus.PENDING_PAYMENT)
                     .createdAt(LocalDateTime.now())
-                    .expireAt(LocalDateTime.now().plusMinutes(1))
+                    .expireAt(LocalDateTime.now().plusMinutes(10))
                     .slotId(request.getSlotIds())
                     .build();
             bookingRepository.save(booking);
@@ -106,12 +108,21 @@ public class BookingService {
         Long customerId = customer.getId();
 
         List<CustomerBookingListProjection> rows = bookingRepository.findAllBookingsForCustomer(customerId);
-        return rows.stream()
-                .map(row -> {
-                    //Load all slots in DB query per booking
-                    List<Slots> slotEntities = slotsRepository.findAllByIds(row.getSlotId());
-                    return mapper.map(row, slotEntities);
-                }).toList();
+
+        if (rows.isEmpty()) return List.of();
+
+        Map<String,List<CustomerBookingListProjection>> groups=rows.stream().collect(Collectors.groupingBy(CustomerBookingListProjection::getBookingId));
+
+        List<CustomerBookingListItem> result=new ArrayList<>();
+        for(var entry : groups.entrySet())
+        {
+            List<Long> slotIds=entry.getValue().stream()
+                    .map(CustomerBookingListProjection::getSlotId)
+                    .toList();
+            List<Slots> slotEntities=slotsRepository.findAllByIds(slotIds);
+            result.add(mapper.map(entry.getValue().get(0),slotEntities));
+        }
+        return result;
     }
 
     public CustomerBookingDetails getBookingDetails(String bookingId) {
@@ -139,6 +150,37 @@ public class BookingService {
 
 
         return mapper.mapToDto(row,slotsEntities,image);
+
+    }
+
+    public BookingStatusResponse getBookingStatus(String bookingId) {
+        User customer = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        Long customerId = customer.getId();
+
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new CustomException("Booking not found", HttpStatus.NOT_FOUND));
+
+        if (!booking.getCustomer().getId().equals(customerId)) {
+            throw new CustomException("Unauthorized", HttpStatus.FORBIDDEN);
+        }
+        BookingStatusResponse response = new BookingStatusResponse();
+        response.setBookingId(bookingId);
+        response.setBookingStatus(booking.getStatus());
+
+        //calculate remaining minutes
+        if (booking.getExpireAt()!=null)
+        {
+            long remainingMinutes=java.time.Duration.between(
+                    LocalDateTime.now(),
+                    booking.getExpireAt()
+            ).toMinutes();
+            response.setRemainingMinutes(Math.max(0,remainingMinutes));
+        }
+        else
+        {
+            response.setRemainingMinutes(0);
+        }
+        return response;
 
     }
 }

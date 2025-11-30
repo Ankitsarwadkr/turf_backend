@@ -20,7 +20,7 @@ public interface SlotsRepository extends JpaRepository<Slots, Long> {
   List<Slots> findByTurfIdAndDateOrderByStartTime(Long turfId, LocalDate date);
 
   @Lock(LockModeType.PESSIMISTIC_WRITE)
-  @Query("SELECT s FROM Slots s WHERE s.id IN :ids")
+  @Query("SELECT s FROM Slots s WHERE s.id IN :ids ORDER BY s.id")
   List<Slots> lockByIdsForUpdate(@Param("ids") List<Long> ids);
 
   @Query("SELECT s FROM Slots s WHERE s.id IN :ids")

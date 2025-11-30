@@ -2,6 +2,7 @@ package com.example.turf_Backend.controller;
 
 import com.example.turf_Backend.dto.request.BookingRequest;
 import com.example.turf_Backend.dto.response.BookingResponse;
+import com.example.turf_Backend.dto.response.BookingStatusResponse;
 import com.example.turf_Backend.dto.response.CustomerBookingDetails;
 import com.example.turf_Backend.dto.response.CustomerBookingListItem;
 import com.example.turf_Backend.service.BookingService;
@@ -36,5 +37,9 @@ public class BookingController {
     {
         return ResponseEntity.ok(bookingService.getBookingDetails(bookingId));
     }
-
+    @GetMapping("/{bookingId}/status")
+    public ResponseEntity<BookingStatusResponse> getBookingStatus(@PathVariable String bookingId)
+    {
+        return ResponseEntity.ok(bookingService.getBookingStatus(bookingId));
+    }
 }

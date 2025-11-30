@@ -25,7 +25,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+
+import java.awt.print.Book;
 import java.security.SignatureException;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -39,6 +42,8 @@ public class PaymentService {
     private final PaymentRepository paymentRepository;
     private final PaymentMapper mapper;
     private final EmailService emailService;
+
+
 
     @Value("${razorpay.key}")
     private String key;
@@ -66,6 +71,22 @@ public class PaymentService {
         if (booking.getExpireAt()!=null && booking.getExpireAt().isBefore(LocalDateTime.now()))
         {
             throw new CustomException("Booking expired",HttpStatus.BAD_REQUEST);
+        }
+        Optional<Payment>existingPending =paymentRepository.findFirstByBookingIdAndStatus(bookingId,PaymentStatus.PENDING);
+        if (existingPending.isPresent())
+        {
+            log.info("Reusing existing pending payment for booking={}",bookingId);
+            return mapper.toOrderResponse(existingPending.get());
+        }
+        Optional<Payment> existingAny=paymentRepository.findByBookingId(bookingId);
+        if (existingAny.isPresent())
+        {
+            Payment p=existingAny.get();
+            if (p.getStatus()==PaymentStatus.SUCCESS)
+            {
+                log.info("Payment already successfull for booking={} returing existing payment" ,bookingId);
+                return mapper.toOrderResponse(p);
+            }
         }
 
         try
@@ -109,44 +130,66 @@ public class PaymentService {
         {
             throw new CustomException("Booking already confiremed ",HttpStatus.BAD_REQUEST);
         }
-        if (booking.getExpireAt()!=null && booking.getExpireAt().isBefore(LocalDateTime.now()))
-        {
-            throw new CustomException("Booking expired ",HttpStatus.BAD_REQUEST);
-        }
         Payment payment=paymentRepository.findByRazorpayOrderId(request.getRazorpayOrderId())
                 .orElseThrow(()->new CustomException("Payment Record not found ",HttpStatus.NOT_FOUND));
 
         boolean signatureValid=verifySignature(request);
-        //Double lock slots
-
         List<Slots> lockedSlots=slotsRepository.lockByIdsForUpdate(booking.getSlotId());
+        LocalDateTime now=LocalDateTime.now();
+        boolean isExpired=booking.getExpireAt()!=null && booking.getExpireAt().isBefore(now);
 
-        if (!signatureValid)
-        {
-            payment.setStatus(PaymentStatus.FAILED);
-            payment.setRazorpayPaymentId(request.getRazorpayPaymentId());
-            paymentRepository.save(payment);
-            //release slots (if any are Booked)
-            if (!lockedSlots.isEmpty())
+        if (isExpired){
+            long minutesLate=java.time.Duration.between(booking.getExpireAt(),now).toMinutes();
+            log.warn("Payment verification attempted after expiry. booking ={},expireAt={},now={},minutesLate={}",booking.getId(),booking.getExpireAt(),now,minutesLate);
+
+            //Hybrid Logic whether to accept or reject
+
+            //check 1: Is signature Valid?
+            if (!signatureValid)
             {
-                lockedSlots.forEach(s->{
-                    if (s.getStatus()!= SlotStatus.AVAILABLE)
-                        s.setStatus(SlotStatus.AVAILABLE);
-                });
+                //if signature is not valid just reject the booking
+                payment.setStatus(PaymentStatus.FAILED);
+                payment.setRazorpayPaymentId(request.getRazorpayPaymentId());
+                paymentRepository.save(payment);
+
+                releaseSlots(lockedSlots);
+                booking.setStatus(BookingStatus.EXPIRED);
+                bookingRepository.save(booking);
+
+                throw new CustomException("Booking expired and payment verification failed",HttpStatus.BAD_REQUEST);
+            }
+            //check 2 With in grace period ?
+            if (minutesLate<=2)
+            {
+                log.info("within grace period.Accepting late payment. minutesLate={}",minutesLate);
+
+            } else if (lockedSlots.stream().allMatch(s->s.getStatus()==SlotStatus.AVAILABLE)) {
+                log.info("Slots still available . Accepting late payment. minutesLate={}",minutesLate);
+                lockedSlots.forEach(s->s.setStatus(SlotStatus.BOOKED));
                 slotsRepository.saveAll(lockedSlots);
             }
-            booking.setStatus(BookingStatus.CANCELLED);
-            bookingRepository.save(booking);
-            emailService.sendPaymentFailed(booking.getCustomer().getEmail(),booking);
-            log.warn("Payment signature invalid Booking cancelled and slots released. booking={},rpOrder={}",booking.getId(),request.getRazorpayOrderId());
-            return mapper.toVerifyResponse(payment,false);
+            else {
+                log.warn("Rejecting late payment-slots no longer available. booking={}",booking.getId());
+
+                payment.setStatus(PaymentStatus.FAILED);
+                payment.setRazorpayPaymentId(request.getRazorpayPaymentId());
+                paymentRepository.save(payment);
+
+                releaseSlots(lockedSlots);
+                booking.setStatus(BookingStatus.EXPIRED);
+                bookingRepository.save(booking);
+                emailService.sendPaymentFailed(booking.getCustomer().getEmail(), booking);
+
+                log.error("User paid but booking expired and slot taken . need refund. paymentId={}",request.getRazorpayPaymentId());
+
+                throw new CustomException("Booking expired and slot are no longer available ."+" Refund will be processed within 5-7 business days. "+HttpStatus.BAD_REQUEST);
+            }
         }
 
         // --- robust validation after double-lock ---
-        List<Long> bookingSlotIds=booking.getSlotId()==null? List.of():
+
+        List<Long> expectedSlotIds = booking.getSlotId()==null? List.of():
                 booking.getSlotId();
-        List<Slots> locledSlots =slotsRepository.lockByIdsForUpdate(bookingSlotIds);
-        List<Long> expectedSlotIds = bookingSlotIds;
 
 // 1) Ensure we locked all requested slots
         if (lockedSlots.size() != expectedSlotIds.size()) {
@@ -207,7 +250,7 @@ public class PaymentService {
             return mapper.toVerifyResponse(payment, false);
         }
 
-// If we reach here → all locked slots are BOOKED and count matches → continue
+        // If we reach here → all locked slots are BOOKED and count matches → continue
 
         // if signature valid update payment and booking
         payment.setRazorpayPaymentId(request.getRazorpayPaymentId());
@@ -262,24 +305,148 @@ public class PaymentService {
     }
     @Transactional
     public void markPaymentCaptured(String razorpayOrderId, String razorpayPaymentId) {
-        Optional<Payment> opt=paymentRepository.findByRazorpayOrderId(razorpayOrderId);
-        if (opt.isEmpty())return;
-        Payment p=opt.get();
-
-        p.setRazorpayPaymentId(razorpayPaymentId);
-        p.setStatus(PaymentStatus.SUCCESS);
-        p.setPaymentTime(LocalDateTime.now());
-        paymentRepository.save(p);
-
-        Booking b=p.getBooking();
-        if (b.getStatus()!=BookingStatus.CONFIRMED)
-        {
-            b.setStatus(BookingStatus.CONFIRMED);
+        log.info("Webhook processing payment.captured: order={}, payment={}",
+                razorpayOrderId, razorpayPaymentId);
+        //find payment
+        Optional<Payment> opt = paymentRepository.findByRazorpayOrderId(razorpayOrderId);
+        if (opt.isEmpty()) {
+            log.warn("Payment not found for webhook. order={}", razorpayOrderId);
+            return;
         }
-        bookingRepository.save(b);
-    log.info("Webhook captured payment :rpOder={},rpPaymentId={}, booking={}",razorpayOrderId,razorpayPaymentId,p.getBooking().getId());
-    }
 
+        Payment payment = opt.get();
+
+        // 2. IDEMPOTENCY CHECK - check for success
+        if (payment.getStatus() == PaymentStatus.SUCCESS) {
+            log.info("Payment already SUCCESS (likely from verifyPayment). " +
+                    "Webhook arriving late, skipping. order={}", razorpayOrderId);
+            return;
+        }
+        //check for failed
+        if (payment.getStatus()==PaymentStatus.FAILED)
+        {
+            log.info("Payment already failed. Skipping duplicate order={}",razorpayOrderId);
+            return;
+        }
+        Booking booking = payment.getBooking();
+
+        Optional<Booking> lockedBookingOpt=bookingRepository.lockBookingForUpdate(booking.getId());
+        if (lockedBookingOpt.isEmpty())
+        {
+            log.warn("webhook: booking disappeared. id={}",booking.getId());
+            return;
+        }
+        Booking lockedbooking=lockedBookingOpt.get();
+
+        if (lockedbooking.getStatus()!=BookingStatus.PENDING_PAYMENT){
+            log.info("webhook : booking status changes to {},While for lock . Skipping. id={}",lockedbooking.getStatus(),lockedbooking.getId());
+            return;
+        }
+
+        List<Slots> lockedSlots = slotsRepository.lockByIdsForUpdate(lockedbooking.getSlotId());
+
+
+        LocalDateTime now = LocalDateTime.now();
+        boolean isExpired = lockedbooking.getExpireAt() != null &&
+                lockedbooking.getExpireAt().isBefore(now);
+
+        if (isExpired) {
+            long minutesLate = java.time.Duration.between(lockedbooking.getExpireAt(), now).toMinutes();
+
+            log.warn("Webhook received after expiry. booking={}, expireAt={}, now={}, minutesLate={}",
+                    lockedbooking.getId(), lockedbooking.getExpireAt(), now, minutesLate);
+
+            // Within grace period?
+            if (minutesLate <= 2) {
+                log.info("Webhook: within grace period. Accepting. minutesLate={}", minutesLate);
+                // Continue to SUCCESS below
+            }
+            // Slots still available?
+            else if (lockedSlots.stream().allMatch(s -> s.getStatus() == SlotStatus.AVAILABLE)) {
+                log.info("Webhook: slots still available. Accepting late payment. minutesLate={}",
+                        minutesLate);
+                // Re-book slots
+                lockedSlots.forEach(s -> s.setStatus(SlotStatus.BOOKED));
+                slotsRepository.saveAll(lockedSlots);
+            }
+            else {
+                log.warn("Webhook: rejecting late payment - slots no longer available. booking={}",
+                        lockedbooking.getId());
+
+                payment.setStatus(PaymentStatus.FAILED);
+                payment.setRazorpayPaymentId(razorpayPaymentId);
+                paymentRepository.save(payment);
+
+                releaseSlots(lockedSlots);
+                lockedbooking.setStatus(BookingStatus.EXPIRED);
+                bookingRepository.save(lockedbooking);
+                // TODO: Initiate refund
+                log.error("Webhook: user paid but slot taken. Need refund. paymentId={}", razorpayPaymentId);
+                return;
+            }
+        }
+        List<Long> expectedSlotIds = lockedbooking.getSlotId() == null ? List.of() : lockedbooking.getSlotId();
+
+        if (lockedSlots.size() != expectedSlotIds.size()) {
+            log.warn("Webhook: slot count mismatch. locked={} expected={} booking={}",
+                    lockedSlots.size(), expectedSlotIds.size(), lockedbooking.getId());
+
+            payment.setStatus(PaymentStatus.FAILED);
+            payment.setRazorpayPaymentId(razorpayPaymentId);
+            paymentRepository.save(payment);
+
+            List<Slots> toRelease = lockedSlots.stream()
+                    .filter(s -> s.getStatus() == SlotStatus.BOOKED)
+                    .toList();
+            if (!toRelease.isEmpty()) {
+                toRelease.forEach(s -> s.setStatus(SlotStatus.AVAILABLE));
+                slotsRepository.saveAll(toRelease);
+            }
+            lockedbooking.setStatus(BookingStatus.CANCELLED);
+            bookingRepository.save(lockedbooking);
+            return;
+        }
+
+        List<Slots> problematic = lockedSlots.stream()
+                .filter(s -> s.getStatus() != SlotStatus.BOOKED)
+                .toList();
+        if (!problematic.isEmpty()) {
+            String details = problematic.stream()
+                    .map(s -> s.getId() + ":" + s.getStatus())
+                    .reduce((a, b) -> a + ", " + b)
+                    .orElse("");
+
+            log.warn("Webhook: slots changed before processing. booking={} details={}",
+                    lockedbooking.getId(), details);
+
+            payment.setStatus(PaymentStatus.FAILED);
+            payment.setRazorpayPaymentId(razorpayPaymentId);
+            paymentRepository.save(payment);
+
+            List<Slots> toRelease = lockedSlots.stream()
+                    .filter(s -> s.getStatus() == SlotStatus.BOOKED)
+                    .toList();
+            if (!toRelease.isEmpty()) {
+                toRelease.forEach(s -> s.setStatus(SlotStatus.AVAILABLE));
+                slotsRepository.saveAll(toRelease);
+            }
+
+            lockedbooking.setStatus(BookingStatus.CANCELLED);
+            bookingRepository.save(lockedbooking);
+            return; // Don't mark SUCCESS
+        }
+
+        payment.setRazorpayPaymentId(razorpayPaymentId);
+        payment.setStatus(PaymentStatus.SUCCESS);
+        payment.setPaymentTime(LocalDateTime.now());
+        paymentRepository.save(payment);
+
+        lockedbooking.setStatus(BookingStatus.CONFIRMED);
+        bookingRepository.save(lockedbooking);
+
+        log.info("Webhook successfully confirmed payment. booking={}, payment={}",
+               lockedbooking.getId(), razorpayPaymentId);
+    }
     @Transactional
     public void markPaymentRefunded(String razorpayPatmentId) {
         Optional<Payment> opt=paymentRepository.findAll()
@@ -295,5 +462,18 @@ public class PaymentService {
         b.setStatus(BookingStatus.CANCELLED);
         bookingRepository.save(b);
         log.info("webhook refunded payment : rpPaymentId={},booking={}",razorpayPatmentId,p.getBooking().getId());
+    }
+    private void releaseSlots(List<Slots> slots)
+    {
+        if (!slots.isEmpty())
+        {
+            slots.forEach(s->{
+                if (s.getStatus()==SlotStatus.BOOKED)
+                {
+                    s.setStatus(SlotStatus.AVAILABLE);
+                }
+            });
+            slotsRepository.saveAll(slots);
+        }
     }
 }
