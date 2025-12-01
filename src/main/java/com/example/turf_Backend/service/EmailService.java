@@ -126,7 +126,7 @@ public class EmailService {
     }
     private String formatSlots(Booking booking)
     {
-        List<Slots> slots=slotsRepository.findAllById(booking.getSlotId());
+        List<Slots> slots=slotsRepository.findAllById(booking.getSlotIds());
         DateTimeFormatter dateFmt=DateTimeFormatter.ofPattern("dd MM yyyy");
         DateTimeFormatter timeFmt=DateTimeFormatter.ofPattern("hh:mm a");
         StringBuilder sb=new StringBuilder();

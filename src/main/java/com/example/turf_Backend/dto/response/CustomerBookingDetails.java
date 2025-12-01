@@ -1,5 +1,6 @@
 package com.example.turf_Backend.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Builder;
 import lombok.Data;
 
@@ -25,6 +26,8 @@ public class CustomerBookingDetails {
 
     private List<SlotInfo>slots;
     private LocalDateTime createdAt;
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     private LocalDateTime  expireAt;
 
     @Data

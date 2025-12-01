@@ -13,6 +13,8 @@ public interface CustomerBookingListProjection {
     Integer getAmount();
     String getBookingStatus();
     String getPaymentStatus();
-    Long getSlotId();
+    LocalDate getSlotDate();
+    LocalTime getSlotStartTime();
+    LocalTime getSlotEndTime();
 
 }

@@ -57,7 +57,7 @@ public class BookingService {
         {
             if (b.getExpireAt()!=null && b.getExpireAt().isAfter(now))
             {
-                Set<Long> existingSet=new TreeSet<>(b.getSlotId());
+                Set<Long> existingSet=new TreeSet<>(b.getSlotIds());
                 if (existingSet.equals(requestedSet) && b.getTurf().getId().equals(turf.getId()))
                 {
                     //Lock same slots again and return same booking
@@ -92,8 +92,8 @@ public class BookingService {
                     .status(BookingStatus.PENDING_PAYMENT)
                     .createdAt(LocalDateTime.now())
                     .expireAt(LocalDateTime.now().plusMinutes(10))
-                    .slotId(request.getSlotIds())
                     .build();
+            booking.setSlots(new HashSet<>(slots));
             bookingRepository.save(booking);
 
             slots.forEach(S->
@@ -111,46 +111,76 @@ public class BookingService {
 
         if (rows.isEmpty()) return List.of();
 
-        Map<String,List<CustomerBookingListProjection>> groups=rows.stream().collect(Collectors.groupingBy(CustomerBookingListProjection::getBookingId));
+        Map<String,List<CustomerBookingListProjection>> groups=rows.stream()
+                .collect(Collectors.groupingBy(CustomerBookingListProjection::getBookingId
+                ,LinkedHashMap::new,
+                        Collectors.toList()));
 
-        List<CustomerBookingListItem> result=new ArrayList<>();
-        for(var entry : groups.entrySet())
-        {
-            List<Long> slotIds=entry.getValue().stream()
-                    .map(CustomerBookingListProjection::getSlotId)
-                    .toList();
-            List<Slots> slotEntities=slotsRepository.findAllByIds(slotIds);
-            result.add(mapper.map(entry.getValue().get(0),slotEntities));
-        }
-        return result;
+       return groups.entrySet().stream()
+               .map(entry->{
+                   CustomerBookingListProjection first=entry.getValue().get(0);
+
+                   List<CustomerBookingListItem.SlotInfo> slots=entry.getValue().stream()
+                           .map(row->CustomerBookingListItem.SlotInfo.builder()
+                                   .date(row.getSlotDate())
+                                   .startTime(row.getSlotStartTime())
+                                   .endTime(row.getSlotEndTime())
+                                   .build())
+                           .toList();
+
+                   return CustomerBookingListItem.builder()
+                           .bookingId(first.getBookingId())
+                           .turfId(first.getTurfId())
+                           .turfName(first.getTurfName())
+                           .turfCity(first.getTurfCity())
+                           .amount(first.getAmount())
+                           .bookingStatus(first.getBookingStatus())
+                           .paymentStatus(first.getPaymentStatus())
+                           .slots(slots)
+                           .build();
+               })
+               .toList();
     }
 
     public CustomerBookingDetails getBookingDetails(String bookingId) {
         User customer = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         Long customerId = customer.getId();
 
-        CustomerBookingDetailsProjection row= bookingRepository.findBookingDetails(bookingId,customerId);
+       List<CustomerBookingDetailsProjection> rows=bookingRepository.findBookingDetails(bookingId,customerId);
+       if (rows.isEmpty())
+       {
+           throw new CustomException("Boooking Not Found",HttpStatus.NOT_FOUND);
+       }
+       CustomerBookingDetailsProjection first=rows.get(0);
 
-        if (row==null)
-            throw new CustomException("Booking Not Found",HttpStatus.NOT_FOUND);
+       List<CustomerBookingDetails.SlotInfo> slots=rows.stream()
+               .map(row->CustomerBookingDetails.SlotInfo.builder()
+                       .date(row.getSlotDate())
+                       .startTime(row.getSlotStartTime())
+                       .endTime(row.getSlotEndTime())
+                       .price(row.getSlotPrice())
+                       .build())
+               .toList();
 
-            Booking booking=bookingRepository.findById(bookingId).orElseThrow(
-                    ()->new CustomException("Booking Not Found",HttpStatus.NOT_FOUND));
+       LocalDateTime now =LocalDateTime.now();
+       LocalDateTime expireAt= first.getExpireAt();
+       boolean isExpired=expireAt!=null && now.isAfter(expireAt);
 
-            List<Long> slotIds=booking.getSlotId();
-        List<Slots> slotsEntities=slotIds.isEmpty()
-                ?List.of(): slotsRepository.findAllByIds(slotIds);
-
-        String image=turfImageRepository.findByTurfIdOrderByIdAsc(row.getTurfId())
-
-
-
-                .map(TurfImage::getFilePath).orElse(null);
-
-
-
-        return mapper.mapToDto(row,slotsEntities,image);
-
+       return CustomerBookingDetails.builder()
+               .bookingId(first.getBookingId())
+               .turfId(first.getTurfId())
+               .turfName(first.getTurfName())
+               .turfCity(first.getTurfCity())
+               .turfAddress(first.getTurfAddress())
+               .turfImage(first.getTurfImage())
+               .amount(first.getAmount())
+               .bookingStatus(first.getBookingStatus())
+               .paymentStatus(first.getPaymentStatus())
+               .paymentId(first.getPaymentId())
+               .slots(slots)
+               .createdAt(first.getCreatedAt())
+               .expireAt(isExpired ? null : expireAt)
+               .build();
     }
 
     public BookingStatusResponse getBookingStatus(String bookingId) {
@@ -168,19 +198,16 @@ public class BookingService {
         response.setBookingStatus(booking.getStatus());
 
         //calculate remaining minutes
-        if (booking.getExpireAt()!=null)
-        {
+        if (booking.getExpireAt()!=null) {
             long remainingMinutes=java.time.Duration.between(
                     LocalDateTime.now(),
                     booking.getExpireAt()
             ).toMinutes();
             response.setRemainingMinutes(Math.max(0,remainingMinutes));
         }
-        else
-        {
+        else {
             response.setRemainingMinutes(0);
         }
         return response;
-
     }
 }

@@ -134,16 +134,14 @@ public class PaymentService {
                 .orElseThrow(()->new CustomException("Payment Record not found ",HttpStatus.NOT_FOUND));
 
         boolean signatureValid=verifySignature(request);
-        List<Slots> lockedSlots=slotsRepository.lockByIdsForUpdate(booking.getSlotId());
+        List<Slots> lockedSlots=slotsRepository.lockByIdsForUpdate(booking.getSlotIds());
         LocalDateTime now=LocalDateTime.now();
         boolean isExpired=booking.getExpireAt()!=null && booking.getExpireAt().isBefore(now);
 
         if (isExpired){
             long minutesLate=java.time.Duration.between(booking.getExpireAt(),now).toMinutes();
             log.warn("Payment verification attempted after expiry. booking ={},expireAt={},now={},minutesLate={}",booking.getId(),booking.getExpireAt(),now,minutesLate);
-
             //Hybrid Logic whether to accept or reject
-
             //check 1: Is signature Valid?
             if (!signatureValid)
             {
@@ -188,8 +186,8 @@ public class PaymentService {
 
         // --- robust validation after double-lock ---
 
-        List<Long> expectedSlotIds = booking.getSlotId()==null? List.of():
-                booking.getSlotId();
+        List<Long> expectedSlotIds = booking.getSlotIds()==null? List.of():
+                booking.getSlotIds();
 
 // 1) Ensure we locked all requested slots
         if (lockedSlots.size() != expectedSlotIds.size()) {
@@ -313,7 +311,6 @@ public class PaymentService {
             log.warn("Payment not found for webhook. order={}", razorpayOrderId);
             return;
         }
-
         Payment payment = opt.get();
 
         // 2. IDEMPOTENCY CHECK - check for success
@@ -343,7 +340,7 @@ public class PaymentService {
             return;
         }
 
-        List<Slots> lockedSlots = slotsRepository.lockByIdsForUpdate(lockedbooking.getSlotId());
+        List<Slots> lockedSlots = slotsRepository.lockByIdsForUpdate(lockedbooking.getSlotIds());
 
 
         LocalDateTime now = LocalDateTime.now();
@@ -385,7 +382,7 @@ public class PaymentService {
                 return;
             }
         }
-        List<Long> expectedSlotIds = lockedbooking.getSlotId() == null ? List.of() : lockedbooking.getSlotId();
+        List<Long> expectedSlotIds = lockedbooking.getSlotIds()== null ? List.of() : lockedbooking.getSlotIds();
 
         if (lockedSlots.size() != expectedSlotIds.size()) {
             log.warn("Webhook: slot count mismatch. locked={} expected={} booking={}",

@@ -1,10 +1,12 @@
 package com.example.turf_Backend.controller;
 
+import com.example.turf_Backend.dto.response.OwnerBookingDetailsResponse;
 import com.example.turf_Backend.dto.response.OwnerBookingListItem;
 import com.example.turf_Backend.service.OwnerBookingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -21,4 +23,10 @@ public class OwnerBookingController {
     {
         return ResponseEntity.ok(ownerBookingService.getBookingListForOwner());
     }
+    @GetMapping("{bookingId}")
+    public  ResponseEntity<OwnerBookingDetailsResponse> getBookingDetails(@PathVariable String bookingId)
+    {
+        return ResponseEntity.ok(ownerBookingService.getBookingDetailsForOwner(bookingId));
+    }
+
 }

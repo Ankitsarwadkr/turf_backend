@@ -3,25 +3,26 @@ package com.example.turf_Backend.dto.DtosProjection;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.List;
 
-public interface OwnerBookingListProjection {
+public interface OwnerBookingDetailsProjection {
     String getBookingId();
-
     Long getTurfId();
     String getTurfName();
+    String getTurfCity();
+    String getTurfAddress();
+    String getTurfImage();
 
     String getCustomerName();
     String getCustomerEmail();
 
     Integer getAmount();
     String getBookingStatus();
+
     LocalDateTime getCreatedAt();
 
-    Long getSlotId();
     LocalDate getSlotDate();
     LocalTime getSlotStartTime();
     LocalTime getSlotEndTime();
     Integer getSlotPrice();
-    String getSlotStatus();
+
 }

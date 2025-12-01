@@ -5,7 +5,9 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Entity
 @Getter
@@ -27,6 +29,21 @@ public class Booking {
 
     private LocalDateTime createdAt;
     private LocalDateTime expireAt;
-    @ElementCollection
-    private List<Long> slotId;
+
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "booking_slots",
+            joinColumns = @JoinColumn(name = "booking_id"),
+            inverseJoinColumns = @JoinColumn(name = "slot_id")
+    )
+    private Set<Slots> slots=new HashSet<>();
+
+    //helper method
+    public List<Long> getSlotIds()
+    {
+        return slots.stream()
+                .map(Slots::getId)
+                .sorted().toList();
+    }
 }

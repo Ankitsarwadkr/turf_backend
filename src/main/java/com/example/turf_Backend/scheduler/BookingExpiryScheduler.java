@@ -57,7 +57,7 @@ public class BookingExpiryScheduler {
                     log.info("Booking status changes to {} while waiting for lock.Skipping expiry.id={}",locked.getStatus(),locked.getId());
                     continue;
                 }
-                List<Slots> slots=slotsRepository.lockByIdsForUpdate(locked.getSlotId());
+                List<Slots> slots=slotsRepository.lockByIdsForUpdate(locked.getSlotIds());
                 slots.forEach(s->s.setStatus(SlotStatus.AVAILABLE));
                 slotsRepository.saveAll(slots);
 
@@ -78,7 +78,7 @@ public class BookingExpiryScheduler {
                     }
                 }
                 emailService.sendBookingExpired(locked.getCustomer().getEmail(),locked);
-                log.info("Expired booking {} | Slots released: {}",locked.getId(),locked.getSlotId());
+                log.info("Expired booking {} | Slots released: {}",locked.getId(),locked.getSlotIds());
             }
             catch (Exception e)
             {
