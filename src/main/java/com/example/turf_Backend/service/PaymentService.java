@@ -26,9 +26,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
-import java.awt.print.Book;
+
 import java.security.SignatureException;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -254,6 +253,10 @@ public class PaymentService {
         payment.setRazorpayPaymentId(request.getRazorpayPaymentId());
         payment.setStatus(PaymentStatus.SUCCESS);
         payment.setPaymentTime(LocalDateTime.now());
+        payment.setAmountPaid(booking.getAmount());
+        payment.setPlatformFeePaid(booking.getPlatformFee());
+        payment.setCommissionPaid(booking.getCommissionAmount());
+        payment.setOwnerAmountPaid(booking.getOwnerEarning());
         paymentRepository.save(payment);
         //update booking
         booking.setStatus(BookingStatus.CONFIRMED);
@@ -436,6 +439,12 @@ public class PaymentService {
         payment.setRazorpayPaymentId(razorpayPaymentId);
         payment.setStatus(PaymentStatus.SUCCESS);
         payment.setPaymentTime(LocalDateTime.now());
+
+        Booking b=payment.getBooking();
+        payment.setAmountPaid(payment.getAmount());
+        if (payment.getPlatformFeePaid()==null) payment.setPlatformFeePaid(b.getPlatformFee());
+        if (payment.getCommissionPaid()==null) payment.setCommissionPaid(b.getCommissionAmount());
+        if (payment.getOwnerAmountPaid()==null) payment.setOwnerAmountPaid(b.getOwnerEarning());
         paymentRepository.save(payment);
 
         lockedbooking.setStatus(BookingStatus.CONFIRMED);

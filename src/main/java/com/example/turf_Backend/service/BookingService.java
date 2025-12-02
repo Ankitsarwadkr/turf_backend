@@ -12,10 +12,7 @@ import com.example.turf_Backend.enums.BookingStatus;
 import com.example.turf_Backend.enums.SlotStatus;
 import com.example.turf_Backend.exception.CustomException;
 import com.example.turf_Backend.mapper.BookingMapper;
-import com.example.turf_Backend.repository.BookingRepository;
-import com.example.turf_Backend.repository.SlotsRepository;
-import com.example.turf_Backend.repository.TurfImageRepository;
-import com.example.turf_Backend.repository.TurfRepository;
+import com.example.turf_Backend.repository.*;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,7 +32,7 @@ public class BookingService {
     private final TurfRepository turfRepository;
     private final BookingRepository bookingRepository;
     private final BookingMapper mapper;
-    private final TurfImageRepository turfImageRepository;
+    private final PlatformConfigRepository platformConfigRepository;
 
     @Transactional
     public BookingResponse createBooking(BookingRequest request)
@@ -82,13 +79,25 @@ public class BookingService {
                 throw new CustomException("Some slots are already booked", HttpStatus.CONFLICT);
             }
         }
-            int total=slots.stream().mapToInt(Slots::getPrice).sum();
+           int slotTotal=slots.stream().mapToInt(Slots::getPrice).sum();
+            PlatformConfig config=platformConfigRepository.findById(1L)
+                    .orElseThrow(()->new CustomException("Platform config missing",HttpStatus.INTERNAL_SERVER_ERROR));
+
+            int platformFee=config.getPlatformFee();
+            int commission=(slotTotal* config.getCommissionPercentage())/100;
+            int ownerEarning=slotTotal-commission;
+            int  finalPayable=slotTotal+platformFee;
+
 
             Booking booking=Booking.builder()
                     .id(UUID.randomUUID().toString())
                     .customer(customer)
                     .turf(turf)
-                    .amount(total)
+                    .slotTotal(slotTotal)
+                    .platformFee(platformFee)
+                    .commissionAmount(commission)
+                    .ownerEarning(ownerEarning)
+                    .amount(finalPayable)
                     .status(BookingStatus.PENDING_PAYMENT)
                     .createdAt(LocalDateTime.now())
                     .expireAt(LocalDateTime.now().plusMinutes(10))

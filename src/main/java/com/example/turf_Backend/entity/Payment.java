@@ -46,8 +46,10 @@ public class Payment {
     @Column(name = "payment_time")
     private LocalDateTime paymentTime;
 
-    private Integer platformFee;
-    private Integer ownerAmount;
+    private Integer amountPaid;
+    private Integer platformFeePaid;
+    private Integer commissionPaid;
+    private Integer ownerAmountPaid;
 
     @Enumerated(EnumType.STRING)
     private SettlementStatus settlementStatus;
@@ -65,6 +67,10 @@ public class Payment {
                 .booking(booking)
                 .razorpayOrderId(razorpayOrderId)
                 .amount(amount)
+                .platformFeePaid(null)
+                .commissionPaid(null)
+                .ownerAmountPaid(null)
+                .amountPaid(null)
                 .currency(currency)
                 .status(PaymentStatus.PENDING)
                 .settlementStatus(SettlementStatus.PENDING)

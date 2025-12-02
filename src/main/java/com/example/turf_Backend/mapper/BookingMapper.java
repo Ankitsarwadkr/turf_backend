@@ -15,6 +15,10 @@ import java.util.List;
 public class BookingMapper {
     public BookingResponse toDto(Booking booking, List<Slots> slotEntites,String message)
     {
+        int slotTotal=slotEntites.stream()
+                .mapToInt(Slots::getPrice)
+                .sum();
+
         List<BookingResponse.SlotInfo>slotInfos=slotEntites.stream()
                 .map(s->BookingResponse.SlotInfo.builder()
                         .slotId(s.getId())
@@ -27,6 +31,8 @@ public class BookingMapper {
 
         return BookingResponse.builder()
                 .bookingId(booking.getId())
+                .slotTotal(slotTotal)
+                .platformFee(booking.getPlatformFee())
                 .amount(booking.getAmount())
                 .status(booking.getStatus().name())
                 .expiredAt(booking.getExpireAt())

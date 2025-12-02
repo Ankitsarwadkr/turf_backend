@@ -22,14 +22,21 @@ public class Booking {
     private User customer;
     @ManyToOne
     private Turf turf;
-    private int amount;
+    private int amount;// final payable amount by customer
+    @Column(nullable = false)
+    private int slotTotal;
+    @Column(nullable = false)
+    private int platformFee;
+    @Column(nullable = false)
+    private int commissionAmount;
+    @Column(nullable = false)
+    private int ownerEarning; //payout to owner
 
     @Enumerated(EnumType.STRING)
     private BookingStatus status;
 
     private LocalDateTime createdAt;
     private LocalDateTime expireAt;
-
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(

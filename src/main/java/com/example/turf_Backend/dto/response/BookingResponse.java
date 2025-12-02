@@ -14,7 +14,9 @@ public class BookingResponse {
     private String bookingId;
     private Long turfId;
     private List<SlotInfo> slots;
-    private int amount;
+    private int slotTotal;
+    private int platformFee;
+    private int amount;//total payable by customer
     private String status;
     private String turfName;
     private String turfCity;
