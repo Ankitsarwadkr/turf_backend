@@ -26,6 +26,7 @@ public User toOwnerEntity(RegisterOwnerRequest dto)
     User user=new User();
     user.setName(dto.getName());
     user.setEmail(dto.getEmail());
+    user.setMobileNo(dto.getMobileNo());
     user.setPassword(dto.getPassword());
     user.setRole(Role.OWNER);
     user.setSubscriptionStatus(Status.PENDING);

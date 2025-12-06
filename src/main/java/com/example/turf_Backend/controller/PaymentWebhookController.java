@@ -4,6 +4,7 @@ import com.example.turf_Backend.service.PaymentService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.json.JSONArray;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
@@ -11,6 +12,10 @@ import org.springframework.util.StreamUtils;
 import org.springframework.web.bind.annotation.*;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 
 @RestController
 @RequestMapping("/api/payment/webhook")
@@ -20,7 +25,7 @@ public class PaymentWebhookController {
 
     private final PaymentService paymentService;
 
-    @Value("${razorpay.secret}")
+    @Value("${razorpay.webhook.secret}")
     private String secret;
 
     @PostMapping
@@ -52,6 +57,9 @@ public class PaymentWebhookController {
                 case "payment.refunded.created",
                      "payment.refunded.updated" ,
                      "payment.refunded" -> handlePaymentRefunded(json);
+
+                case "settlement.processed"->handleSettlementProcessed(json);
+                case "settlement.created"->handleSettlementProcessed(json);
 
                 default -> log.info("Unhandled webhook event: {}", event);
             }
@@ -109,9 +117,11 @@ public class PaymentWebhookController {
             String rpPaymentId = entity.getString("id");
             String rpOrderId = entity.optString("order_id");
 
-            log.info("Webhook payment captured: order={} payment={}", rpOrderId, rpPaymentId);
+            long capturedAtUnix=entity.getLong("created_at");
 
-            paymentService.markPaymentCaptured(rpOrderId, rpPaymentId);
+            log.info("Webhook payment captured: order={} payment={} capturedAt={}", rpOrderId, rpPaymentId,capturedAtUnix);
+
+            paymentService.markPaymentCaptured(rpOrderId, rpPaymentId,capturedAtUnix,entity);
 
         } catch (Exception ex) {
             log.error("Error processing payment.captured webhook", ex);
@@ -133,6 +143,33 @@ public class PaymentWebhookController {
 
         } catch (Exception ex) {
             log.error("Error processing payment.refunded webhook", ex);
+        }
+    }
+    private void handleSettlementProcessed(JSONObject json)
+    {
+        try
+        {
+            JSONObject entity=json.getJSONObject("payload")
+                    .getJSONObject("settlement")
+                    .getJSONObject("entity");
+
+            long timeStamp=entity.getLong("created_at");
+            LocalDateTime settledAt= Instant.ofEpochSecond(timeStamp).atZone(ZoneId.of("Asia/Kolkata"))
+                            .toLocalDateTime();
+            JSONArray paymentIds=entity.getJSONArray("payment_ids");
+            log.info("Settlement webhook received. payments={},settledAt={}",paymentIds,settledAt);
+
+            for (int i=0; i<paymentIds.length(); i++)
+            {
+                String razorpayPaymentId=paymentIds.getString(i);
+                paymentService.markPaymentSettled(razorpayPaymentId,settledAt);
+            }
+
+
+        }
+        catch (Exception e)
+        {
+            log.error("Error processing settlement webhook ",e);
         }
     }
 }

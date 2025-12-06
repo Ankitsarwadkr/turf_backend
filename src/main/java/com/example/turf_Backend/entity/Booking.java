@@ -37,6 +37,8 @@ public class Booking {
 
     private LocalDateTime createdAt;
     private LocalDateTime expireAt;
+    @Column(name = "slot_end_date_time",nullable = true)
+    private LocalDateTime slotEndDateTime;
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(

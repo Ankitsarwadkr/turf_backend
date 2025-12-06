@@ -3,16 +3,15 @@ package com.example.turf_Backend.service;
 import com.example.turf_Backend.dto.request.VerifyPaymentRequest;
 import com.example.turf_Backend.dto.response.PaymentOderResponse;
 import com.example.turf_Backend.dto.response.VerifyPaymentResponse;
-import com.example.turf_Backend.entity.Booking;
-import com.example.turf_Backend.entity.Payment;
-import com.example.turf_Backend.entity.Slots;
-import com.example.turf_Backend.entity.User;
+import com.example.turf_Backend.entity.*;
 import com.example.turf_Backend.enums.BookingStatus;
 import com.example.turf_Backend.enums.PaymentStatus;
+import com.example.turf_Backend.enums.SettlementStatus;
 import com.example.turf_Backend.enums.SlotStatus;
 import com.example.turf_Backend.exception.CustomException;
 import com.example.turf_Backend.mapper.PaymentMapper;
 import com.example.turf_Backend.repository.BookingRepository;
+import com.example.turf_Backend.repository.OwnerEarningRepository;
 import com.example.turf_Backend.repository.PaymentRepository;
 import com.example.turf_Backend.repository.SlotsRepository;
 import com.razorpay.Order;
@@ -27,8 +26,11 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 
+import java.math.BigDecimal;
 import java.security.SignatureException;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 
@@ -41,7 +43,7 @@ public class PaymentService {
     private final PaymentRepository paymentRepository;
     private final PaymentMapper mapper;
     private final EmailService emailService;
-
+    private final OwnerEarningRepository ownerEarningRepository;
 
 
     @Value("${razorpay.key}")
@@ -125,12 +127,14 @@ public class PaymentService {
             throw new CustomException("Unauthorized booking access",HttpStatus.FORBIDDEN);
         }
         //prevent duplicate /late verification
-        if (booking.getStatus()==BookingStatus.CONFIRMED)
-        {
-            throw new CustomException("Booking already confiremed ",HttpStatus.BAD_REQUEST);
-        }
         Payment payment=paymentRepository.findByRazorpayOrderId(request.getRazorpayOrderId())
                 .orElseThrow(()->new CustomException("Payment Record not found ",HttpStatus.NOT_FOUND));
+
+        if (booking.getStatus()==BookingStatus.CONFIRMED)
+        {
+            return mapper.toVerifyResponse(payment,true);
+        }
+
 
         boolean signatureValid=verifySignature(request);
         List<Slots> lockedSlots=slotsRepository.lockByIdsForUpdate(booking.getSlotIds());
@@ -305,7 +309,7 @@ public class PaymentService {
         }
     }
     @Transactional
-    public void markPaymentCaptured(String razorpayOrderId, String razorpayPaymentId) {
+    public void markPaymentCaptured(String razorpayOrderId, String razorpayPaymentId, long capturedAtUnix, JSONObject entity) {
         log.info("Webhook processing payment.captured: order={}, payment={}",
                 razorpayOrderId, razorpayPaymentId);
         //find payment
@@ -316,8 +320,25 @@ public class PaymentService {
         }
         Payment payment = opt.get();
 
+        LocalDateTime captureAt=LocalDateTime.ofInstant(
+                Instant.ofEpochSecond(capturedAtUnix),ZoneId.of("Asia/Kolkata")
+        );
+        payment.setPaymentMethod(entity.optString("method",null));
+        if (entity.has("fee"))
+        {
+            payment.setGatewayFee(entity.getInt("fee"));
+        }
+        if (entity.has("tax")
+        ) {
+
+            payment.setGatewayTax(entity.getInt("tax"));
+        }
         // 2. IDEMPOTENCY CHECK - check for success
         if (payment.getStatus() == PaymentStatus.SUCCESS) {
+            if(payment.getPaymentCapturedAt()==null)
+            {
+                payment.setPaymentCapturedAt(captureAt);
+            }
             log.info("Payment already SUCCESS (likely from verifyPayment). " +
                     "Webhook arriving late, skipping. order={}", razorpayOrderId);
             return;
@@ -328,6 +349,10 @@ public class PaymentService {
             log.info("Payment already failed. Skipping duplicate order={}",razorpayOrderId);
             return;
         }
+
+        LocalDateTime capturedAt=LocalDateTime.ofInstant(
+                Instant.ofEpochSecond(capturedAtUnix), ZoneId.of("Asia/Kolkata")
+        );
         Booking booking = payment.getBooking();
 
         Optional<Booking> lockedBookingOpt=bookingRepository.lockBookingForUpdate(booking.getId());
@@ -439,6 +464,7 @@ public class PaymentService {
         payment.setRazorpayPaymentId(razorpayPaymentId);
         payment.setStatus(PaymentStatus.SUCCESS);
         payment.setPaymentTime(LocalDateTime.now());
+        payment.setPaymentCapturedAt(capturedAt);
 
         Booking b=payment.getBooking();
         payment.setAmountPaid(payment.getAmount());
@@ -450,8 +476,8 @@ public class PaymentService {
         lockedbooking.setStatus(BookingStatus.CONFIRMED);
         bookingRepository.save(lockedbooking);
 
-        log.info("Webhook successfully confirmed payment. booking={}, payment={}",
-               lockedbooking.getId(), razorpayPaymentId);
+        log.info("Webhook successfully confirmed payment. booking={}, payment={} captureAt={}",
+               lockedbooking.getId(), razorpayPaymentId,capturedAt);
     }
     @Transactional
     public void markPaymentRefunded(String razorpayPatmentId) {
@@ -469,6 +495,7 @@ public class PaymentService {
         bookingRepository.save(b);
         log.info("webhook refunded payment : rpPaymentId={},booking={}",razorpayPatmentId,p.getBooking().getId());
     }
+
     private void releaseSlots(List<Slots> slots)
     {
         if (!slots.isEmpty())
@@ -481,5 +508,43 @@ public class PaymentService {
             });
             slotsRepository.saveAll(slots);
         }
+    }
+    @Transactional
+    public void markPaymentSettled(String rpPaymentId, LocalDateTime settledAt) {
+        Optional<Payment> opt=paymentRepository.findByRazorpayPaymentId(rpPaymentId);
+        if (opt.isEmpty())
+        {
+            log.warn("Settlement webhook: payment not found , rpPaymentId={}",rpPaymentId);
+            return ;
+        }
+        Payment payment=opt.get();
+
+        if (payment.getSettlementStatus()== SettlementStatus.SETTLED){
+            log.info("Settlement already processed , rpPaymentId={}",rpPaymentId);
+            return ;
+        }
+        if (payment.getStatus()!=PaymentStatus.SUCCESS)
+        {
+            log.warn("Settlement recieved for non success payment,. rpPaymentId={}",rpPaymentId);
+            return;
+        }
+        payment.setSettlementStatus(SettlementStatus.SETTLED);
+        payment.setSettledAt(settledAt);
+        paymentRepository.save(payment);
+        log.info("Payment marked as SETTLED successfully booking={},rpPaymentId={}",payment.getBooking().getId(),rpPaymentId);
+
+        Booking booking=payment.getBooking();
+        Long ownerId=booking.getTurf().getOwner().getId();
+
+        OwnerEarning earning=new OwnerEarning();
+        earning.setOwnerId(ownerId);
+        earning.setBookingId(booking.getId());
+        earning.setAmount(BigDecimal.valueOf(booking.getOwnerEarning()));
+        earning.setSlotEndDateTime(booking.getSlotEndDateTime());
+        earning.setSettled(true);
+        earning.setPaidOut(false);
+
+        ownerEarningRepository.save(earning);
+        log.info("Owner Earning created for booking={} amount={}",booking.getId(),booking.getOwnerEarning());
     }
 }

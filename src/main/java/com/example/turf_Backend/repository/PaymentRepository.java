@@ -13,4 +13,5 @@ Optional<Payment> findFirstByBookingIdAndStatus(String bookingId, PaymentStatus 
 
 Optional<Payment> findByBookingId(String bookingId);
 
+    Optional<Payment> findByRazorpayPaymentId(String rpPaymentId);
 }

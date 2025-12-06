@@ -20,7 +20,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -87,7 +89,22 @@ public class BookingService {
             int commission=(slotTotal* config.getCommissionPercentage())/100;
             int ownerEarning=slotTotal-commission;
             int  finalPayable=slotTotal+platformFee;
+        //determine booking level endtime
+        //find with latest endtime
 
+        Slots lastSlot=slots.stream()
+                .max(Comparator.comparing(Slots::getEndTime))
+                .orElseThrow(()->new CustomException("No Slots Found",HttpStatus.BAD_REQUEST));
+
+        LocalDate bookingDate=slots.get(0).getDate();
+        LocalTime lastEndTime=lastSlot.getEndTime();
+
+        if (lastEndTime.equals(LocalTime.MIDNIGHT)||lastEndTime.isBefore(lastSlot.getStartTime()))
+        {
+            bookingDate=bookingDate.plusDays(1);
+        }
+        //final computed slot end datetime
+        LocalDateTime slotEndDateTime=LocalDateTime.of(bookingDate,lastEndTime);
 
             Booking booking=Booking.builder()
                     .id(UUID.randomUUID().toString())
@@ -101,6 +118,7 @@ public class BookingService {
                     .status(BookingStatus.PENDING_PAYMENT)
                     .createdAt(LocalDateTime.now())
                     .expireAt(LocalDateTime.now().plusMinutes(10))
+                    .slotEndDateTime(slotEndDateTime)
                     .build();
             booking.setSlots(new HashSet<>(slots));
             bookingRepository.save(booking);

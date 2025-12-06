@@ -18,6 +18,7 @@ public class OwnerResponse {
     private Long id;
     private String name;
     private String email;
+    private String mobileNo;
     private Double subscriptionAmount;
     private Status subscriptionStatus;
     private LocalDateTime createdAt;

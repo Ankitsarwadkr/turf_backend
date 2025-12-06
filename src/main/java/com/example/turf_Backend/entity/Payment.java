@@ -46,15 +46,19 @@ public class Payment {
     @Column(name = "payment_time")
     private LocalDateTime paymentTime;
 
+    private LocalDateTime paymentCapturedAt;
+
     private Integer amountPaid;
     private Integer platformFeePaid;
     private Integer commissionPaid;
     private Integer ownerAmountPaid;
+    private Integer gatewayFee;
+    private Integer gatewayTax;
 
     @Enumerated(EnumType.STRING)
     private SettlementStatus settlementStatus;
 
-    private LocalDateTime settlementDate;
+    private LocalDateTime settledAt;
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
