@@ -3,12 +3,17 @@ package com.example.turf_Backend.controller;
 
 import com.example.turf_Backend.dto.request.AdminRejectRequest;
 import com.example.turf_Backend.dto.response.OwnerResponse;
+import com.example.turf_Backend.dto.response.PayoutBatchResponse;
 import com.example.turf_Backend.service.AdminService;
+import com.example.turf_Backend.service.PayoutService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
@@ -16,6 +21,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class AdminController {
     private final AdminService adminService;
+
 
     @GetMapping("/owners/pending")
     @PreAuthorize("hasRole('ADMIN')")
@@ -35,5 +41,7 @@ public class AdminController {
     {
         return ResponseEntity.ok(adminService.rejectOwner(ownerId,reason));
     }
+
+
 
 }

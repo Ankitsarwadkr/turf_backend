@@ -20,6 +20,7 @@ public class Payment {
     @Id
     @Column(length = 36)
     private  String id;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "booking_id",nullable = false)
     private Booking booking;

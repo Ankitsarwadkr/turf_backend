@@ -518,16 +518,19 @@ public class PaymentService {
             return ;
         }
         Payment payment=opt.get();
-
+        //Ignore if settlement already processed
         if (payment.getSettlementStatus()== SettlementStatus.SETTLED){
             log.info("Settlement already processed , rpPaymentId={}",rpPaymentId);
             return ;
         }
+        //Ignore if payment wasnt successfull
         if (payment.getStatus()!=PaymentStatus.SUCCESS)
         {
             log.warn("Settlement recieved for non success payment,. rpPaymentId={}",rpPaymentId);
             return;
         }
+        //mark payment settled
+
         payment.setSettlementStatus(SettlementStatus.SETTLED);
         payment.setSettledAt(settledAt);
         paymentRepository.save(payment);
@@ -535,7 +538,13 @@ public class PaymentService {
 
         Booking booking=payment.getBooking();
         Long ownerId=booking.getTurf().getOwner().getId();
-
+        //idemptency check for  OwnerEarning
+        if (ownerEarningRepository.existsByBookingId(booking.getId()))
+        {
+            log.warn("Owner earning already exists for booking={},skipping duplicate ",booking.getId());
+            return;
+        }
+        //create owner earning
         OwnerEarning earning=new OwnerEarning();
         earning.setOwnerId(ownerId);
         earning.setBookingId(booking.getId());
@@ -543,8 +552,7 @@ public class PaymentService {
         earning.setSlotEndDateTime(booking.getSlotEndDateTime());
         earning.setSettled(true);
         earning.setPaidOut(false);
-
         ownerEarningRepository.save(earning);
-        log.info("Owner Earning created for booking={} amount={}",booking.getId(),booking.getOwnerEarning());
+        log.info("Owner Earning created for booking={} owner={} amount={}",booking.getId(),ownerId,booking.getOwnerEarning());
     }
 }

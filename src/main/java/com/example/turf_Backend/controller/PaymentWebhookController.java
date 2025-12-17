@@ -153,15 +153,18 @@ public class PaymentWebhookController {
                     .getJSONObject("settlement")
                     .getJSONObject("entity");
 
-            long timeStamp=entity.getLong("created_at");
-            LocalDateTime settledAt= Instant.ofEpochSecond(timeStamp).atZone(ZoneId.of("Asia/Kolkata"))
-                            .toLocalDateTime();
-            JSONArray paymentIds=entity.getJSONArray("payment_ids");
-            log.info("Settlement webhook received. payments={},settledAt={}",paymentIds,settledAt);
+            long createdAtUnix=entity.getLong("created_at");
 
-            for (int i=0; i<paymentIds.length(); i++)
+            LocalDateTime settledAt=Instant.ofEpochSecond(createdAtUnix)
+                    .atZone(ZoneId.of("Asia/Kolkata"))
+                    .toLocalDateTime();
+
+            JSONArray paymentArr=entity.getJSONArray("payments");
+            log.info("Settlement webhook received. payments={},settledAt={}",paymentArr.length(),settledAt);
+
+            for (int i=0; i<paymentArr.length(); i++)
             {
-                String razorpayPaymentId=paymentIds.getString(i);
+                String razorpayPaymentId=paymentArr.getJSONObject(i).getString("id");
                 paymentService.markPaymentSettled(razorpayPaymentId,settledAt);
             }
 

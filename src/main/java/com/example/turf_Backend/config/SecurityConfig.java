@@ -46,6 +46,7 @@ public class SecurityConfig {
                     .requestMatchers("/uploads/owners/**").authenticated()
                     .requestMatchers("/uploads/turfs/**").permitAll()
                  .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                    .requestMatchers("api/test/**").permitAll()
                     .anyRequest().authenticated()
             )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

@@ -22,6 +22,10 @@ public class Booking {
     private User customer;
     @ManyToOne
     private Turf turf;
+
+    @OneToOne(mappedBy = "booking",fetch = FetchType.LAZY)
+    private Payment payment;
+
     private int amount;// final payable amount by customer
     @Column(nullable = false)
     private int slotTotal;

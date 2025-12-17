@@ -30,12 +30,17 @@ public class OwnerEarning {
     @Column(nullable = false)
     private LocalDateTime slotEndDateTime;
 
+    @Builder.Default
     @Column(nullable = false)
     private boolean settled=false;
-
+    @Builder.Default
     @Column(nullable = false)
     private boolean paidOut=false;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "payout_batch_id")
+    private PayoutBatch payoutBatch;
+    @Builder.Default
     @Column(nullable = false)
     private LocalDateTime createdAt=LocalDateTime.now();
 }
