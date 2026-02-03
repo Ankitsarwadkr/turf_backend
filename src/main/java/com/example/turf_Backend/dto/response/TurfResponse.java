@@ -13,11 +13,12 @@ public class TurfResponse {
     private String name;
     private String address;
     private String mapUrl;
+    private String locality;
     private String city;
     private String description;
     private String amenities;
     private String turfType;
     private boolean available;
-    private List<String> imageUrls;
+    private List<TurfImageResponse> images;
     private LocalDateTime createdAt;
 }

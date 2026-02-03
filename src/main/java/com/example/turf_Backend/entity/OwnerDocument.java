@@ -22,6 +22,7 @@ public class OwnerDocument {
     private User owner;
     private String fileName;
     private String filePath;
+    private String docType;
     @CreationTimestamp
     @Column(name = "uploaded_at")
     private LocalDateTime uploadedAt;

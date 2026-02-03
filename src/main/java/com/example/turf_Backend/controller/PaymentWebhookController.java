@@ -1,6 +1,7 @@
 package com.example.turf_Backend.controller;
 
 import com.example.turf_Backend.service.PaymentService;
+import com.example.turf_Backend.service.PaymentWebhookService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,7 +16,6 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.time.ZoneOffset;
 
 @RestController
 @RequestMapping("/api/payment/webhook")
@@ -23,7 +23,7 @@ import java.time.ZoneOffset;
 @Slf4j
 public class PaymentWebhookController {
 
-    private final PaymentService paymentService;
+    private final PaymentWebhookService paymentWebhookService;
 
     @Value("${razorpay.webhook.secret}")
     private String secret;
@@ -58,8 +58,7 @@ public class PaymentWebhookController {
                      "payment.refunded.updated" ,
                      "payment.refunded" -> handlePaymentRefunded(json);
 
-                case "settlement.processed"->handleSettlementProcessed(json);
-                case "settlement.created"->handleSettlementProcessed(json);
+                case "settlement.processed", "settlement.created" ->handleSettlementProcessed(json);
 
                 default -> log.info("Unhandled webhook event: {}", event);
             }
@@ -121,7 +120,7 @@ public class PaymentWebhookController {
 
             log.info("Webhook payment captured: order={} payment={} capturedAt={}", rpOrderId, rpPaymentId,capturedAtUnix);
 
-            paymentService.markPaymentCaptured(rpOrderId, rpPaymentId,capturedAtUnix,entity);
+            paymentWebhookService.markPaymentCaptured(rpOrderId, rpPaymentId,capturedAtUnix,entity);
 
         } catch (Exception ex) {
             log.error("Error processing payment.captured webhook", ex);
@@ -139,7 +138,7 @@ public class PaymentWebhookController {
 
             log.info("Webhook payment refunded: payment={}", rpPaymentId);
 
-            paymentService.markPaymentRefunded(rpPaymentId);
+            paymentWebhookService.markPaymentRefunded(rpPaymentId);
 
         } catch (Exception ex) {
             log.error("Error processing payment.refunded webhook", ex);
@@ -165,7 +164,7 @@ public class PaymentWebhookController {
             for (int i=0; i<paymentArr.length(); i++)
             {
                 String razorpayPaymentId=paymentArr.getJSONObject(i).getString("id");
-                paymentService.markPaymentSettled(razorpayPaymentId,settledAt);
+                paymentWebhookService.markPaymentSettled(razorpayPaymentId,settledAt);
             }
 
 

@@ -1,0 +1,19 @@
+package com.example.turf_Backend.dto.response;
+
+import com.example.turf_Backend.enums.ExecutionStatus;
+import com.example.turf_Backend.enums.ReconciliationStatus;
+import lombok.Builder;
+import lombok.Getter;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
+@Getter
+@Builder
+public class ReconcileExecutionResponse {
+    private Long executionId;
+    private ExecutionStatus executionStatus;
+    private ReconciliationStatus reconciliationStatus;
+    private LocalDateTime reconciledAt;
+    private String note;
+}

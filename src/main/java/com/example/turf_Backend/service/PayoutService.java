@@ -5,13 +5,10 @@ import com.example.turf_Backend.dto.DtosProjection.PayoutExecutionDetailsProject
 import com.example.turf_Backend.dto.DtosProjection.PayoutExecutionProjectionDto;
 import com.example.turf_Backend.dto.response.*;
 import com.example.turf_Backend.entity.*;
-import com.example.turf_Backend.enums.BatchStatus;
-import com.example.turf_Backend.enums.ExecutionFailureReason;
-import com.example.turf_Backend.enums.ExecutionStatus;
+import com.example.turf_Backend.enums.*;
 import com.example.turf_Backend.exception.CustomException;
 import com.example.turf_Backend.mapper.PayoutMapper;
 import com.example.turf_Backend.repository.*;
-import jakarta.transaction.Transactional;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -21,6 +18,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -38,6 +36,8 @@ public class PayoutService {
     private final PayoutMapper payoutMapper;
     private final PayoutExecutionRepository payoutExecutionRepository;
     private final PayoutExecutionFailureRepository payoutExecutionFailureRepository;
+    private final BookingLedgerRepository bookingLedgerRepository;
+    private final PlatformLedgerRepository platformLedgerRepository;
 
 
     @Value("${payout.execution.max}")
@@ -74,6 +74,7 @@ public class PayoutService {
         PayoutBatch batch = PayoutBatch.builder()
                 .weekStart(weekStart)
                 .weekEnd(weekEnd)
+                .type(BatchType.WEEKLY)
                 .status(BatchStatus.CREATED)
                 .totalAmount(BigDecimal.ZERO)
                 .totalOwners(0)
@@ -211,54 +212,130 @@ public class PayoutService {
         log.info("Batch Approved batchId={}",batchId);
         return "Batch Approved";
     }
+
     @org.springframework.transaction.annotation.Transactional
-    public BatchProcessingResponse startProcessing(Long batchId)
-    {
-        log.info("Starting processing for batch {}",batchId);
-        int updated=payoutBatchRepository.markProcessing(batchId);
-        if (updated==0){
-            BatchStatus status=payoutBatchRepository.findStatusById(batchId);
-            log.info("Batch {} not eligible for. Current status={}",batchId,status);
+    public BatchProcessingResponse startProcessing(Long batchId) {
+        log.info("Starting processing for batch {}", batchId);
+        PayoutBatch batch = payoutBatchRepository.findById(batchId).orElseThrow(() -> new CustomException("Batch Not Found", HttpStatus.NOT_FOUND));
+
+        int updated = payoutBatchRepository.markProcessing(batchId);
+        if (updated == 0) {
+            BatchStatus status = payoutBatchRepository.findStatusById(batchId);
+            log.info("Batch {} not eligible for. Current status={}", batchId, status);
             return BatchProcessingResponse.builder()
                     .batchId(batchId)
                     .status(status)
                     .executionCount(0)
                     .build();
         }
-       log.info("Batch {} moved to PROCESSING",batchId);
-        List<OwnerEarning> earnings=ownerEarningRepository.findByPayoutBatchId(batchId);
-        Map<Long,BigDecimal> ownerToatals=earnings.stream()
+        log.info("Batch {} moved to PROCESSING (type={})", batchId, batch.getType());
+        return switch (batch.getType()) {
+            case WEEKLY -> processWeeklyBatch(batch.getId());
+            case CORRECTION -> processCorrectionBatch(batch.getId());
+        };
+    }
+    private BatchProcessingResponse processWeeklyBatch(Long batchId) {
+
+        log.info("Processing WEEKLY batch {}", batchId);
+
+        List<OwnerEarning> earnings =
+                ownerEarningRepository.findByPayoutBatchId(batchId);
+
+        Map<Long, BigDecimal> ownerTotals =
+                earnings.stream()
                         .collect(Collectors.groupingBy(
-                                OwnerEarning :: getOwnerId,Collectors.reducing(BigDecimal.ZERO,OwnerEarning::getAmount,BigDecimal::add)
+                                OwnerEarning::getOwnerId,
+                                Collectors.reducing(
+                                        BigDecimal.ZERO,
+                                        OwnerEarning::getAmount,
+                                        BigDecimal::add
+                                )
                         ));
-        int created=0;
-        for (var entry : ownerToatals.entrySet()){
-            if (payoutExecutionRepository.existsByBatchIdAndOwnerId(batchId,entry.getKey()))
-            {
-                log.warn("Execution already exists batch={} owner = {} ",batchId,entry.getKey());
+
+        int created = 0;
+        for (var entry : ownerTotals.entrySet()) {
+
+            Long ownerId = entry.getKey();
+            BigDecimal amount = entry.getValue();
+
+            if (payoutExecutionRepository.existsByBatchIdAndOwnerId(
+                   batchId, ownerId)) {
+
+                log.warn(
+                        "Execution already exists for WEEKLY batch={} owner={}",
+                        batchId,
+                        ownerId
+                );
                 continue;
             }
             payoutExecutionRepository.save(
                     PayoutExecution.builder()
-                            .batch(PayoutBatch.ref(batchId))
-                            .ownerId(entry.getKey())
-                            .amount(entry.getValue())
+                            .batch(payoutBatchRepository.getReferenceById(batchId))
+                            .ownerId(ownerId)
+                            .amount(amount)
                             .status(ExecutionStatus.PENDING)
                             .createdAt(LocalDateTime.now())
                             .build()
             );
-            created++;
-            log.info("Execution created batch ={} owner ={} amount = {}",batchId,entry.getKey(),entry.getValue());
-        }
 
+            created++;
+
+            log.info(
+                    "Weekly execution created batch={} owner={} amount={}",
+                    batchId,
+                    ownerId,
+                    amount
+            );
+        }
         return BatchProcessingResponse.builder()
                 .batchId(batchId)
                 .status(BatchStatus.PROCESSING)
                 .executionCount(created)
                 .build();
     }
+    private BatchProcessingResponse processCorrectionBatch(Long batchId) {
 
-    @org.springframework.transaction.annotation.Transactional
+        log.info("Processing CORRECTION batch {}", batchId);
+
+        PayoutBatch batch = payoutBatchRepository.getReferenceById(batchId);   // ✔ managed anchor
+
+        if (payoutExecutionRepository.existsByBatchId(batchId)) {
+            log.warn("Correction execution already exists for batch {}", batchId);
+            return BatchProcessingResponse.builder()
+                    .batchId(batchId)
+                    .status(BatchStatus.PROCESSING)
+                    .executionCount(0)
+                    .build();
+        }
+
+        PayoutExecution original = payoutExecutionRepository
+                .findById(batch.getOriginalExecutionId())
+                .orElseThrow(() -> new CustomException(
+                        "Original execution not found for correction batch " + batchId,
+                        HttpStatus.NOT_FOUND));
+
+        payoutExecutionRepository.save(
+                PayoutExecution.builder()
+                        .batch(payoutBatchRepository.getReferenceById(batchId))  // ✔ managed anchor
+                        .ownerId(original.getOwnerId())
+                        .amount(batch.getCorrectedAmount())
+                        .status(ExecutionStatus.PENDING)
+                        .correctionOf(original)
+                        .createdAt(LocalDateTime.now())
+                        .build()
+        );
+
+        log.info("Correction execution created batch={} originalExecution={} amount={}",
+                batchId, original.getId(), batch.getCorrectedAmount());
+
+        return BatchProcessingResponse.builder()
+                .batchId(batchId)
+                .status(BatchStatus.PROCESSING)
+                .executionCount(1)
+                .build();
+    }
+
+        @org.springframework.transaction.annotation.Transactional
     public MarkExecutionPaidResponse markExecutionPaid(Long executionId, Long adminId, @NotBlank String paymentReference) {
         log.info("Marking execution Paid executionId= {} admin ={} ", executionId, adminId);
 
@@ -289,7 +366,37 @@ public class PayoutService {
 
       int updated=  ownerEarningRepository.markPaidOut(execution.getBatch().getId(),execution.getOwnerId());
         log.info("Marked {} earnings as paidOut for batch={} owner ={} ",updated,execution.getBatch().getId(),execution.getOwnerId());
+            List<PayoutBatchItem> items =
+                    payoutBatchItemRepository.findByBatchIdAndOwnerId(
+                            execution.getBatch().getId(),
+                            execution.getOwnerId()
+                    );
 
+            for (PayoutBatchItem item : items) {
+                OwnerEarning e = item.getOwnerEarning();
+
+                bookingLedgerRepository.save(
+                        BookingLedger.builder()
+                                .bookingId(e.getBookingId())
+                                .ownerId(e.getOwnerId())
+                                .type(LedgerType.DEBIT)
+                                .reason(BookingLedgerReason.PAYOUT)
+                                .amount(item.getAmount())
+                                .referenceType(ReferenceType.EXECUTION)
+                                .referenceId(execution.getPaymentReference())
+                                .createdAt(execution.getPaidAt())
+                                .build()
+                );
+            }
+            platformLedgerRepository.save(PlatformLedger.builder()
+                    .type(LedgerType.DEBIT)
+                    .reason(PlatformLedgerReason.OWNER_PAYOUT)
+                    .amount(execution.getAmount())
+                    .ownerId(execution.getOwnerId())
+                    .referenceType(ReferenceType.EXECUTION)
+                    .referenceId(execution.getPaymentReference())
+                    .createdAt(execution.getPaidAt())
+                    .build());
         updateBatchStatus(execution.getBatch().getId());
         return MarkExecutionPaidResponse.builder()
                 .executionId(execution.getId())
@@ -349,7 +456,30 @@ public class PayoutService {
         payoutExecutionRepository.save(execution);
         log.warn("Execution {} marked FAILED",executionId);
 
+
         updateBatchStatus(execution.getBatch().getId());
+        List<PayoutBatchItem> items =
+                payoutBatchItemRepository.findByBatchIdAndOwnerId(
+                        execution.getBatch().getId(),
+                        execution.getOwnerId()
+                );
+
+        for (PayoutBatchItem item : items) {
+            OwnerEarning e = item.getOwnerEarning();
+
+            bookingLedgerRepository.save(
+                    BookingLedger.builder()
+                            .bookingId(e.getBookingId())
+                            .ownerId(e.getOwnerId())
+                            .type(LedgerType.DEBIT)
+                            .reason(BookingLedgerReason.PAYOUT)
+                            .amount(item.getAmount())
+                            .referenceType(ReferenceType.EXECUTION)
+                            .referenceId(execution.getPaymentReference())
+                            .createdAt(execution.getPaidAt())
+                            .build()
+            );
+        }
         return payoutMapper.buildFailedResponse(execution);
     }
 

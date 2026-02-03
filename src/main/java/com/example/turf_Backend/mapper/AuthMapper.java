@@ -17,6 +17,7 @@ public User toUserEntity(RegistercustomerRequest dto)
     User user=new User();
     user.setName(dto.getName());
     user.setEmail(dto.getEmail());
+    user.setMobileNo(dto.getMobileNo());
     user.setPassword(dto.getPassword());
     user.setRole(Role.CUSTOMER);
     return  user;
@@ -33,9 +34,6 @@ public User toOwnerEntity(RegisterOwnerRequest dto)
     user.setSubscriptionAmount(dto.getSubscriptionAmount());
     return  user;
 }
-public AuthResponse toResponse(User user,String token,String message)
-{
-    return new AuthResponse(token,user.getRole().name(),message);
-}
+
 
 }

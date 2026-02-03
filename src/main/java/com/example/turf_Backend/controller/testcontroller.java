@@ -1,6 +1,7 @@
 package com.example.turf_Backend.controller;
 
 import com.example.turf_Backend.service.PaymentService;
+import com.example.turf_Backend.service.PaymentWebhookService;
 import lombok.Data;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -12,12 +13,12 @@ import java.time.LocalDateTime;
 @Data
 public class testcontroller {
 
-    private final PaymentService paymentService;
+    private final PaymentWebhookService webhookService;
 
     @PostMapping("/api/test/settle/{rpPaymentId}")
     public void testSettle(@PathVariable String rpPaymentId)
     {
-        paymentService.markPaymentSettled(rpPaymentId, LocalDateTime.now());
+       webhookService.markPaymentSettled(rpPaymentId, LocalDateTime.now());
     }
 
 }

@@ -3,9 +3,11 @@ package com.example.turf_Backend.controller;
 import com.example.turf_Backend.dto.request.TurfRequest;
 import com.example.turf_Backend.dto.request.TurfUpdateRequest;
 import com.example.turf_Backend.dto.response.ImageActionResponse;
+import com.example.turf_Backend.dto.response.OwnerTurfRowResponse;
 import com.example.turf_Backend.dto.response.TurfResponse;
 import com.example.turf_Backend.dto.response.TurfUpdateResponse;
 import com.example.turf_Backend.service.TurfService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -22,8 +24,8 @@ import java.util.Map;
 public class TurfController {
     private final TurfService turfService;
 
-    @PostMapping("/addturf")
-    public ResponseEntity<TurfResponse> addTurf(@ModelAttribute TurfRequest request) {
+    @PostMapping("/addTurf")
+    public ResponseEntity<TurfResponse> addTurf(@Valid  @ModelAttribute TurfRequest request) {
         return ResponseEntity.ok(turfService.addTurf(request));
     }
 
@@ -57,9 +59,9 @@ public class TurfController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<List<TurfResponse>> getMyturfs()
+    public ResponseEntity<List<OwnerTurfRowResponse>> getMyTurfs()
     {
-        return  ResponseEntity.ok(turfService.getMyturfs());
+        return  ResponseEntity.ok(turfService.getMyTurfs());
     }
     @GetMapping("/me/{turfId}")
     public ResponseEntity<TurfResponse> getTurfById(@PathVariable Long turfId) {

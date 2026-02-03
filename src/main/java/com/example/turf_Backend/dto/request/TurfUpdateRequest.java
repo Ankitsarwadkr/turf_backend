@@ -10,6 +10,7 @@ public class TurfUpdateRequest {
     private String name;
     private String address;
     private String mapUrl;
+    private String locality;
     private String city;
     private String description;
     private String amenities;

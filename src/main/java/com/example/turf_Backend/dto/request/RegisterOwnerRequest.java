@@ -18,6 +18,9 @@ public class RegisterOwnerRequest {
     private String password;
     @NotNull
     private MultipartFile document;
+    @NotNull
     private String mobileNo;
+    @NotNull
+    private String docType;
     private Double subscriptionAmount;
 }

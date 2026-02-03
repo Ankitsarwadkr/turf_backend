@@ -3,9 +3,11 @@ package com.example.turf_Backend.mapper;
 import com.example.turf_Backend.dto.DtosProjection.CustomerBookingDetailsProjection;
 import com.example.turf_Backend.dto.DtosProjection.CustomerBookingListProjection;
 import com.example.turf_Backend.dto.response.BookingResponse;
+import com.example.turf_Backend.dto.response.CancelBookingResponse;
 import com.example.turf_Backend.dto.response.CustomerBookingDetails;
 import com.example.turf_Backend.dto.response.CustomerBookingListItem;
 import com.example.turf_Backend.entity.Booking;
+import com.example.turf_Backend.entity.Payment;
 import com.example.turf_Backend.entity.Slots;
 import org.springframework.stereotype.Component;
 
@@ -106,5 +108,13 @@ public class BookingMapper {
             return "PENDING";
         }
         return row.getPaymentStatus();
+    }
+    public CancelBookingResponse toCancelResponse(Booking booking, Payment payment){
+        return CancelBookingResponse.builder()
+                .bookingId(booking.getId())
+                .bookingStatus(booking.getStatus())
+                .refundStatus(payment.getRefundStatus())
+                .refundMessage(RefundMessageMapper.toCustomerMessage(payment.getRefundReason()))
+                .build();
     }
 }

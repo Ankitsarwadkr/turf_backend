@@ -1,6 +1,8 @@
 package com.example.turf_Backend.entity;
 
 import com.example.turf_Backend.enums.PaymentStatus;
+import com.example.turf_Backend.enums.RefundReason;
+import com.example.turf_Backend.enums.RefundStatus;
 import com.example.turf_Backend.enums.SettlementStatus;
 import jakarta.persistence.*;
 import lombok.*;
@@ -31,6 +33,9 @@ public class Payment {
     @Column(name = "razorpay_payment_id")
     private String razorpayPaymentId;
 
+    @Column(name = "razorpay_refund_id")
+    private String razorpayRefundId;
+
     @Column(nullable = false)
     private int amount;
 
@@ -56,10 +61,20 @@ public class Payment {
     private Integer gatewayFee;
     private Integer gatewayTax;
 
+    private Integer refundAmount;
+
     @Enumerated(EnumType.STRING)
     private SettlementStatus settlementStatus;
 
     private LocalDateTime settledAt;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "refund_reason")
+    private RefundReason refundReason;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "refund_status")
+    private RefundStatus refundStatus;
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 

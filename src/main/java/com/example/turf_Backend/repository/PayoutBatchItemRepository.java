@@ -39,4 +39,11 @@ public interface PayoutBatchItemRepository extends JpaRepository<PayoutBatchItem
           ORDER BY u.id, b.slotEndDateTime ASC
           """)
     List<BatchVerificationRowProjection> findBatchVerificationRows(@Param("batchId") long batchId);
+
+   @Query("""
+           SELECT i FROM PayoutBatchItem i
+           WHERE i.batch.id= :batchId
+           AND i.ownerEarning.ownerId= :ownerId
+           """)
+    List<PayoutBatchItem> findByBatchIdAndOwnerId(Long id, Long ownerId);
 }

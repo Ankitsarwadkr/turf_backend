@@ -143,5 +143,6 @@ public class EmailService {
     }
 
 
-
+    public void sendPasswordReset(String email, String resetLink) {
+    }
 }

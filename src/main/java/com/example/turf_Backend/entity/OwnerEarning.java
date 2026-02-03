@@ -30,9 +30,7 @@ public class OwnerEarning {
     @Column(nullable = false)
     private LocalDateTime slotEndDateTime;
 
-    @Builder.Default
-    @Column(nullable = false)
-    private boolean settled=false;
+
     @Builder.Default
     @Column(nullable = false)
     private boolean paidOut=false;
@@ -43,4 +41,6 @@ public class OwnerEarning {
     @Builder.Default
     @Column(nullable = false)
     private LocalDateTime createdAt=LocalDateTime.now();
+
+    private LocalDateTime earnedAt;
 }

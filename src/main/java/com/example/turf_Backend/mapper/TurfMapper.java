@@ -1,6 +1,8 @@
 package com.example.turf_Backend.mapper;
 
 import com.example.turf_Backend.dto.request.TurfUpdateRequest;
+import com.example.turf_Backend.dto.response.OwnerTurfRowResponse;
+import com.example.turf_Backend.dto.response.TurfImageResponse;
 import com.example.turf_Backend.dto.response.TurfResponse;
 import com.example.turf_Backend.dto.response.TurfUpdateResponse;
 import com.example.turf_Backend.entity.Turf;
@@ -11,6 +13,24 @@ import java.util.stream.Collectors;
 
 @Component
 public class TurfMapper {
+
+
+
+    public OwnerTurfRowResponse toOwnerRow(Turf turf){
+
+        String primaryImage=turf.getImages().isEmpty()?"/uploads/defaults/no-img.jpg"
+                : turf.getImages().getFirst().getFilePath();
+
+        return OwnerTurfRowResponse.builder()
+                .id(turf.getId())
+                .name(turf.getName())
+                .city(turf.getCity())
+                .turfType(turf.getTurfType())
+                .bookingEnabled(turf.isAvailable())
+                .primaryImage(primaryImage)
+                .createdAt(turf.getCreatedAt())
+                .build();
+    }
     public TurfResponse toResponse(Turf turf)
     {
         return  TurfResponse.builder()
@@ -18,15 +38,15 @@ public class TurfMapper {
                 .name(turf.getName())
                 .address(turf.getAddress())
                 .mapUrl(turf.getMapUrl())
+                .locality(turf.getLocality())
                 .city(turf.getCity())
                 .description(turf.getDescription())
                 .amenities(turf.getAmenities())
                 .turfType(turf.getTurfType())
                 .available(turf.isAvailable())
                 .createdAt(turf.getCreatedAt())
-                .imageUrls(turf.getImages().stream()
-                        .map(TurfImage::getFilePath)
-                        .collect(Collectors.toList()))
+                .images(turf.getImages().stream()
+                        .map(i->new TurfImageResponse(i.getId(),i.getFilePath())).toList())
                 .build();
     }
     public void updateTurfRequest(Turf turf, TurfUpdateRequest request)
@@ -35,6 +55,7 @@ public class TurfMapper {
         if (request.getAddress() != null) turf.setAddress(request.getAddress());
         if (request.getCity() != null) turf.setCity(request.getCity());
         if (request.getMapUrl() != null) turf.setMapUrl(request.getMapUrl());
+        if (request.getLocality()!=null)turf.setLocality(request.getLocality());
         if (request.getDescription() != null) turf.setDescription(request.getDescription());
         if (request.getAmenities() != null) turf.setAmenities(request.getAmenities());
         if (request.getTurfType() != null) turf.setTurfType(request.getTurfType());
@@ -47,6 +68,7 @@ public class TurfMapper {
                 .name(turf.getName())
                 .address(turf.getAddress())
                 .mapUrl(turf.getMapUrl())
+                .locality(turf.getLocality())
                 .city(turf.getCity())
                 .description(turf.getDescription())
                 .amenities(turf.getAmenities())

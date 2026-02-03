@@ -1,10 +1,8 @@
 package com.example.turf_Backend.controller;
 
 import com.example.turf_Backend.dto.request.BookingRequest;
-import com.example.turf_Backend.dto.response.BookingResponse;
-import com.example.turf_Backend.dto.response.BookingStatusResponse;
-import com.example.turf_Backend.dto.response.CustomerBookingDetails;
-import com.example.turf_Backend.dto.response.CustomerBookingListItem;
+import com.example.turf_Backend.dto.response.*;
+import com.example.turf_Backend.service.BookingCancellationService;
 import com.example.turf_Backend.service.BookingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -20,6 +18,7 @@ import java.util.List;
 public class BookingController {
 
     private final BookingService bookingService;
+    private final BookingCancellationService cancellationService;
 
     @PostMapping("/create")
     public ResponseEntity<BookingResponse> createBooking(@RequestBody BookingRequest request)
@@ -41,5 +40,9 @@ public class BookingController {
     public ResponseEntity<BookingStatusResponse> getBookingStatus(@PathVariable String bookingId)
     {
         return ResponseEntity.ok(bookingService.getBookingStatus(bookingId));
+    }
+    @PostMapping("/{bookingId}/cancel")
+    public ResponseEntity<CancelBookingResponse> cancelByCustomer(@PathVariable String bookingId){
+        return ResponseEntity.ok(cancellationService.cancelByCustomer(bookingId));
     }
 }

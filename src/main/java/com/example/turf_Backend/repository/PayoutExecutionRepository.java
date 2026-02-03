@@ -4,7 +4,9 @@ import com.example.turf_Backend.dto.DtosProjection.PayoutExecutionDetailsProject
 import com.example.turf_Backend.dto.DtosProjection.PayoutExecutionProjectionDto;
 import com.example.turf_Backend.entity.PayoutExecution;
 import com.example.turf_Backend.enums.ExecutionStatus;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -13,7 +15,7 @@ import java.util.List;
 import java.util.Optional;
 
 public interface PayoutExecutionRepository extends JpaRepository<PayoutExecution, Long> {
-    boolean existsByBatchId(Long batchId);
+
 
     long countByBatchIdAndStatus(Long batchId, ExecutionStatus status);
     boolean existsByBatchIdAndStatus(Long batchId,ExecutionStatus status);
@@ -83,5 +85,21 @@ public interface PayoutExecutionRepository extends JpaRepository<PayoutExecution
             WHERE e.id= :executionId
             """)
     Optional<PayoutExecutionDetailsProjection> findExecutionDetail(@Param("executionId") Long executionId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            SELECT e
+            FROM PayoutExecution e
+            WHERE e.id= :executionId
+            """)
+    Optional<PayoutExecution> findByIdForReconciliation(@Param("executionId") Long executionId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT e FROM PayoutExecution e WHERE e.id= :id")
+    Optional<PayoutExecution> findForCorrection(@Param("id") Long id);
+
+    boolean existsByCorrectionOf(PayoutExecution execution);
+    boolean existsByBatchId(Long batchId);
+
 
 }

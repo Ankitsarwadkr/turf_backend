@@ -3,6 +3,7 @@ package com.example.turf_Backend.service;
 import com.example.turf_Backend.dto.request.TurfRequest;
 import com.example.turf_Backend.dto.request.TurfUpdateRequest;
 import com.example.turf_Backend.dto.response.ImageActionResponse;
+import com.example.turf_Backend.dto.response.OwnerTurfRowResponse;
 import com.example.turf_Backend.dto.response.TurfResponse;
 import com.example.turf_Backend.dto.response.TurfUpdateResponse;
 import com.example.turf_Backend.entity.Turf;
@@ -43,6 +44,7 @@ public class TurfService {
                 .name(request.getName())
                 .address(request.getAddress())
                 .mapUrl(request.getMapUrl())
+                .locality(request.getLocality())
                 .city(request.getCity())
                 .description(request.getDescription())
                 .amenities(request.getAmenities())
@@ -172,7 +174,7 @@ public class TurfService {
         log.info("Turf '{}' (ID: {}) deleted by owner '{}'", turf.getName(), turfId, owner.getEmail());
     }
     @Transactional
-    public List<TurfResponse> getMyturfs() {
+    public List<OwnerTurfRowResponse> getMyTurfs() {
         User owner=(User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         List<Turf> turfs=turfRepository.findByOwnerId(owner.getId());
         if (turfs.isEmpty())
@@ -180,7 +182,7 @@ public class TurfService {
             throw  new CustomException("No turfs available for this owner",HttpStatus.NOT_FOUND);
         }
         return turfs.stream()
-                .map(turfMapper::toResponse)
+                .map(turfMapper::toOwnerRow)
                 .toList();
     }
     @Transactional

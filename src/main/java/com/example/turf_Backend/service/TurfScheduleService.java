@@ -158,4 +158,10 @@ public class TurfScheduleService {
     private static int toMinutes(LocalTime t) {
         return t.getHour() * 60 + t.getMinute();
     }
+
+    public TurfScheduleResponse getTurfSchedule(Long turfId) {
+        TurfSchedule schedule=turfScheduleRepository.findByTurfId(turfId).orElseThrow(()->new CustomException("Schedule Not found ",HttpStatus.NOT_FOUND));
+
+        return turfScheduleMapper.toResponse(schedule,"This is schedule");
+    }
 }

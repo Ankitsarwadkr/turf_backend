@@ -121,7 +121,7 @@ public interface BookingRepository extends JpaRepository<Booking, String> {
             t.city AS turfCity,
             t.address AS turfAddress,
             (SELECT ti.filePath
-            FROM TurfImage ti 
+            FROM TurfImage ti
             WHERE ti.turf.id= t.id
             ORDER BY ti.id ASC
             LIMIT 1) AS TurfImage,
@@ -148,5 +148,20 @@ public interface BookingRepository extends JpaRepository<Booking, String> {
             ORDER BY s.date ASC, s.startTime ASC
             """)
     List<OwnerBookingDetailsProjection> findOwnerBookingDetails(String bookingId,Long ownerId);
+
+    @Query("""
+            SELECT b
+            FROM Booking b
+            JOIN b.payment p
+            WHERE
+            b.slotEndDateTime <= :now
+            AND p.settlementStatus= 'SETTLED'
+            AND NOT EXISTS(
+            SELECT 1
+            FROM OwnerEarning oe
+            WHERE oe.bookingId=b.id
+            )
+            """)
+    List<Booking> findEndedAndSettledButNotEarned(@Param("now") LocalDateTime now);
 
 }

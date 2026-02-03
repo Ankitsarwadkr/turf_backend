@@ -17,6 +17,10 @@ public class 	TurfBackendApplication {
 				.filename(".env") // or ".env.dev" if that’s your file
 				.ignoreIfMissing()
 				.load();
+
+
+
+
 		dotenv.entries().forEach(entry ->
 				System.setProperty(entry.getKey(), entry.getValue())
 		);

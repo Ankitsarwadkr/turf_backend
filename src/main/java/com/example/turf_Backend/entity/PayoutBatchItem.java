@@ -26,6 +26,11 @@ public class PayoutBatchItem {
     private OwnerEarning ownerEarning;
     @Column(nullable = false)
     private BigDecimal amount;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "execution_id")
+    private PayoutExecution execution;
+
     @Builder.Default
     private LocalDateTime createdAt=LocalDateTime.now();
 }

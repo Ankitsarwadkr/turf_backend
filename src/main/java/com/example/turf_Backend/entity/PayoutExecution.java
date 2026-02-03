@@ -2,11 +2,13 @@ package com.example.turf_Backend.entity;
 
 import com.example.turf_Backend.enums.ExecutionFailureReason;
 import com.example.turf_Backend.enums.ExecutionStatus;
+import com.example.turf_Backend.enums.ReconciliationStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Table(
@@ -28,6 +30,9 @@ public class PayoutExecution {
     @ManyToOne(fetch = FetchType.LAZY,optional = false)
     @JoinColumn(name = "batch_id")
     private PayoutBatch batch;
+
+    @OneToMany(mappedBy = "execution",fetch = FetchType.LAZY)
+    private List<PayoutBatchItem> items;
 
     @Column(name = "owner_id",nullable = false)
     private Long ownerId;
@@ -63,4 +68,19 @@ public class PayoutExecution {
 
     private Long retryBy;
     private LocalDateTime createdAt;
+
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private ReconciliationStatus reconciliationStatus= ReconciliationStatus.PENDING;
+
+    private LocalDateTime reconciledAt;
+    @Column(length = 500)
+    private String reconciliationNote;
+    //Correction
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "correction_of_execution_id")
+    private PayoutExecution correctionOf;
+
+
 }

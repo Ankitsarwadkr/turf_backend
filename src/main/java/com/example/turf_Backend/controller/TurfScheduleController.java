@@ -21,5 +21,9 @@ public class TurfScheduleController {
     {
         return ResponseEntity.ok(turfScheduleService.createOrUpdateSchedule(turfId,request));
     }
+    @GetMapping
+    public ResponseEntity<TurfScheduleResponse> getTurfSchedule(@PathVariable Long turfId){
+        return ResponseEntity.ok(turfScheduleService.getTurfSchedule(turfId));
+    }
 
 }

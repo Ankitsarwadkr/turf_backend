@@ -12,6 +12,8 @@ public class RegistercustomerRequest {
     @NotBlank
     private String email;
     @NotBlank
+    private String mobileNo;
+    @NotBlank
     private String password;
 
 }
