@@ -43,8 +43,8 @@ public class AuthService {
     private final AuthMapper authMapper;
     private final EmailService emailService;
     private final AuthenticationManager authenticationManager;
-    private final ImageStorageService imageStorageService;
     private final PasswordResetTokenRepository tokenRepository;
+    private final CloudinaryService cloudinaryService;
 
     @Value("${frontend.baseUrl}")
     private String frontendBaseUrl;
@@ -71,7 +71,7 @@ public class AuthService {
 
 
 
-        String filePath= imageStorageService.saveOwnerDocument(request.getDocument(), user.getId());
+        String filePath= cloudinaryService.uploadPrivateDocument(request.getDocument(), "/owners"+user.getId());
             OwnerDocument doc = new OwnerDocument();
             doc.setOwner(user);
             doc.setFileName(request.getDocument().getOriginalFilename());

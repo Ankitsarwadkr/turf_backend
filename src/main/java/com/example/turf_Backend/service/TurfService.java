@@ -30,8 +30,8 @@ import java.util.List;
 public class TurfService {
     private final TurfRepository turfRepository;
     private final TurfMapper turfMapper;
-    private final ImageStorageService imageStorageService;
     private final TurfImageRepository turfImageRepository;
+    private final CloudinaryService cloudinaryService;
 
     @Transactional
     public TurfResponse addTurf(TurfRequest request) {
@@ -55,7 +55,7 @@ public class TurfService {
         List<TurfImage> savedImages=new ArrayList<>();
         for (MultipartFile file:request.getImages())
         {
-            String path=imageStorageService.compressAndSaveImage(file, owner.getId());
+            String path=cloudinaryService.uploadPublicImage(file,"turfs/"+owner.getId());
             TurfImage image= TurfImage.builder()
                     .fileName(file.getOriginalFilename())
                     .filePath(path)
@@ -100,7 +100,7 @@ public class TurfService {
         List<TurfImage> newImages=new ArrayList<>();
         for (MultipartFile file:images)
         {
-            String path=imageStorageService.compressAndSaveImage(file, owner.getId());
+            String path=cloudinaryService.uploadPublicImage(file,"turfs/"+owner.getId());
             TurfImage img=TurfImage.builder()
                     .fileName(file.getOriginalFilename())
                     .filePath(path)
@@ -139,7 +139,7 @@ public class TurfService {
         }
 
         // Delete physical image file from disk
-        imageStorageService.deleteImage(image.getFilePath());
+        cloudinaryService.delete(image.getFilePath());
 
         // Remove from DB and Turf entity
         turf.getImages().remove(image);
@@ -167,7 +167,7 @@ public class TurfService {
         }
         //delete the images physically first
         turf.getImages().forEach(image -> {
-            imageStorageService.deleteImage(image.getFilePath());
+            cloudinaryService.delete(image.getFilePath());
         });
         turfRepository.delete(turf);
 

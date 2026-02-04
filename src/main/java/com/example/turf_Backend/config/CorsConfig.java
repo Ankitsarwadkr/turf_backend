@@ -1,5 +1,6 @@
 package com.example.turf_Backend.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.cors.CorsConfiguration;
@@ -12,14 +13,15 @@ import java.util.List;
 
 @Configuration
 public class CorsConfig {
+    @Value("${frontend.baseUrl}")
+    private String frontendBaseUrl;
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource()
     {
         CorsConfiguration config=new CorsConfiguration();
         config.setAllowedOrigins(List.of(
-                "http://localhost:5500",
-                "http://127.0.0.1:5500",
+                frontendBaseUrl,
                 "http://localhost:5173"
         ));
         config.setAllowedMethods(List.of(
