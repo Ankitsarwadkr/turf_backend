@@ -14,8 +14,10 @@ services:
   db:
     image: postgres:16
     container_name: turf-db
-    env_file:
-      - .env
+    environment:
+      POSTGRES_DB: turf
+      POSTGRES_USER: Ankit
+      POSTGRES_PASSWORD: Ankit@9021876476
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
