@@ -1,0 +1,30 @@
+# Git
+.git
+.gitignore
+
+# Maven
+target/
+.mvn/wrapper/maven-wrapper.jar
+
+# Environment files
+.env
+.env.*
+
+
+# IDEs
+.idea
+.vscode
+*.iml
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Node / frontend (if any)
+node_modules/
+
+# Docker itself
+docker-compose.override.yml
