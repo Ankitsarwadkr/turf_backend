@@ -22,7 +22,7 @@ public class CorsConfig {
         CorsConfiguration config=new CorsConfiguration();
         config.setAllowedOrigins(List.of(
                 frontendBaseUrl,
-                "http://localhost:5173"
+                "https://*.ngrok-free.dev"
         ));
         config.setAllowedMethods(List.of(
                "GET",
