@@ -11,6 +11,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -40,24 +41,32 @@ public class AuthController {
         AuthResponse authResponse=authService.login(request);
         String jwt=authResponse.getToken();
 
-        Cookie cookie=new Cookie("token",jwt);
-        cookie.setHttpOnly(true);
-        cookie.setSecure(true);//false for dev stage
-        cookie.setPath("/");
-        cookie.setMaxAge(24*60*60);
-        httpServletResponse.addCookie(cookie);
+        ResponseCookie cookie=ResponseCookie.from("jwt",jwt)
+                .httpOnly(true)
+                .secure(true)
+                .sameSite("None")
+                .domain(".ankitsarwadkar.com")
+                .path("/")
+                .maxAge(7*24*60*60)
+                .build();
+
+        httpServletResponse.addHeader("Set-Cookie", cookie.toString());
+
         return ResponseEntity.ok(authResponse);
 
     }
     @PostMapping("/logout")
     public ResponseEntity<?> logout(HttpServletResponse response)
     {
-        Cookie cookie=new Cookie("token",null);
-        cookie.setHttpOnly(true);
-        cookie.setSecure(true);
-        cookie.setPath("/");
-        cookie.setMaxAge(0);
-        response.addCookie(cookie);
+        ResponseCookie cookie=ResponseCookie.from("jwt","")
+                .httpOnly(true)
+                .secure(true)
+                .sameSite("None")
+                .domain(".ankitsarwadkar.com")
+                .path("/")
+                .maxAge(0)
+                .build();
+        response.addHeader("Set-Cookie",cookie.toString());
 
         return  ResponseEntity.ok(Map.of("message","Logout Successfull"));
     }
