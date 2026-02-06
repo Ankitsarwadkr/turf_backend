@@ -39,7 +39,7 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**","api/public/turfs/**").permitAll()
+                .requestMatchers("/api/auth/**","/api/public/turfs/**").permitAll()
                     .requestMatchers("/api/payment/webhook/**").permitAll()
                     .requestMatchers("/api/customer/**").hasRole("CUSTOMER")
                     .requestMatchers("/api/owners/**").hasRole("OWNER")
