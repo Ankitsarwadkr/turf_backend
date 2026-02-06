@@ -34,7 +34,6 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
 
         if (
-        if (
                 path.equals("/api/auth/login") ||
                         path.equals("/api/auth/register/customer") ||
                         path.equals("/api/auth/register/owner") ||
@@ -46,11 +45,6 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
             return;
         }
-        ) {
-            filterChain.doFilter(request, response);
-            return;
-        }
-
         String token = null;
         String email = null;
 
